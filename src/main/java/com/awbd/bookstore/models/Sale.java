@@ -1,6 +1,10 @@
 package com.awbd.bookstore.models;
 
 import jakarta.persistence.*;
+import lombok.Getter;
+import lombok.NoArgsConstructor;
+import lombok.Setter;
+
 import java.time.LocalDateTime;
 import java.util.ArrayList;
 import java.util.List;
@@ -8,6 +12,9 @@ import java.util.UUID;
 
 @Entity
 @Table(name = "sales")
+@Getter
+@Setter
+@NoArgsConstructor
 public class Sale {
     @Id
     @GeneratedValue(strategy = GenerationType.IDENTITY)
@@ -37,81 +44,19 @@ public class Sale {
     )
     private List<Category> categories = new ArrayList<>();
 
-
-    public Sale() {
+    {
         this.saleCode = generateSaleCode();
     }
 
     public Sale(Double discountPercentage, LocalDateTime startDate, LocalDateTime endDate) {
-        this.saleCode = generateSaleCode();
         this.discountPercentage = discountPercentage;
         this.startDate = startDate;
         this.endDate = endDate;
     }
 
     private String generateSaleCode() {
-        String uuid = UUID.randomUUID().toString().substring(0, 8).toUpperCase();
+        String uuid = UUID.randomUUID().toString().substring(0, 8).toUpperCase();// create a random UUID, we take only the first 8 characters
         return "SALE-" + uuid;
-    }
-
-    public Long getId() {
-        return id;
-    }
-
-    public void setId(Long id) {
-        this.id = id;
-    }
-
-    public String getSaleCode() {
-        return saleCode;
-    }
-
-    public Double getDiscountPercentage() {
-        return discountPercentage;
-    }
-
-    public void setDiscountPercentage(Double discountPercentage) {
-        this.discountPercentage = discountPercentage;
-    }
-
-    public LocalDateTime getStartDate() {
-        return startDate;
-    }
-
-    public void setStartDate(LocalDateTime startDate) {
-        this.startDate = startDate;
-    }
-
-    public LocalDateTime getEndDate() {
-        return endDate;
-    }
-
-    public void setEndDate(LocalDateTime endDate) {
-        this.endDate = endDate;
-    }
-
-    public String getDescription() {
-        return description;
-    }
-
-    public void setDescription(String description) {
-        this.description = description;
-    }
-
-    public Boolean getIsActive() {
-        return isActive;
-    }
-
-    public void setIsActive(Boolean active) {
-        isActive = active;
-    }
-
-    public List<Category> getCategories() {
-        return categories;
-    }
-
-    public void setCategories(List<Category> categories) {
-        this.categories = categories;
     }
 
     public void addCategory(Category category) {
