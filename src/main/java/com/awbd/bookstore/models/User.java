@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
-import lombok.AllArgsConstructor;
 
 import java.util.List;
 
@@ -38,7 +37,7 @@ public class User {
     private Wishlist wishlist;
 
     public enum Role {
-        GUEST, ADMIN
+        USER, ADMIN
     }
 
     public User(String username, String password, Role role) {
