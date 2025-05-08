@@ -26,6 +26,8 @@ public interface CartRepository extends JpaRepository<Cart, Long> {
     @Query("SELECT SUM(b.price) FROM Cart c JOIN c.books b WHERE c.id = :cartId")
     double calculateTotalPrice(@Param("cartId") Long cartId);
 
+
+
     void deleteByUser(User user);
 
 }

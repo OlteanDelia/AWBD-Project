@@ -41,6 +41,7 @@ public interface BookRepository extends JpaRepository<Book, Long> {
     List<Book> findByPriceLessThan(double maxPrice);
     List<Book> findByPriceBetween(double minPrice, double maxPrice);
 
+    List<Book> findByStockGreaterThan(int stock);
 
     // nr review
     @Query("SELECT COUNT(r) FROM Book b JOIN b.reviews r WHERE b.id = :bookId")
