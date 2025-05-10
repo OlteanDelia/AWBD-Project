@@ -35,4 +35,6 @@ public class BookService {
     public List<Book> getBooksInStock() {
         return bookRepository.findByStockGreaterThan(0);
     }
+
+    public void deleteBook(Long bookId){ bookRepository.deleteById(bookId); }
 }

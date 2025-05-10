@@ -53,4 +53,11 @@ public class BookController {
         return ResponseEntity.ok(bookMapper.toDtoList(books));
     }
 
+    @DeleteMapping
+    @RequireAdmin
+    public ResponseEntity<Void> deleteBook(@RequestParam Long bookId) {
+        bookService.deleteBook(bookId);
+        return ResponseEntity.noContent().build();
+    }
+
 }
