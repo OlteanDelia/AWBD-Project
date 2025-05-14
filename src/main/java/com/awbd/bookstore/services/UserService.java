@@ -3,8 +3,10 @@ package com.awbd.bookstore.services;
 import com.awbd.bookstore.exceptions.*;
 import com.awbd.bookstore.models.Cart;
 import com.awbd.bookstore.models.User;
+import com.awbd.bookstore.models.Wishlist;
 import com.awbd.bookstore.repositories.CartRepository;
 import com.awbd.bookstore.repositories.UserRepository;
+import com.awbd.bookstore.repositories.WishlistRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -18,6 +20,7 @@ import java.util.Optional;
 public class UserService {
     private final UserRepository userRepository;
     private final CartRepository cartRepository;
+
 
     public UserService(UserRepository userRepository, CartRepository cartRepository) {
         this.userRepository = userRepository;
@@ -81,6 +84,12 @@ public class UserService {
             cart.setUser(savedUser);
             cart.setBooks(new HashSet<>());
             cartRepository.save(cart);
+
+            Wishlist wishlist = new Wishlist();
+            wishlist.setUser(savedUser);
+            wishlist.setBooks(new HashSet<>());
+
+
 
 
             savedUser.setCart(cart);
