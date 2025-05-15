@@ -96,4 +96,13 @@ public class OrderController {
         List<Order> orders = orderService.getAllOrders();
         return ResponseEntity.ok(orderMapper.toDtoList(orders));
     }
+
+    @PutMapping("/{id}")
+    @RequireAdmin
+    public ResponseEntity<OrderDTO> updateOrder(@PathVariable Long id, @RequestBody OrderDTO orderDTO) {
+        Order updatedOrder = orderService.updateOrder(id, orderDTO.getUserId(), orderDTO.getBookIds());
+        OrderDTO updatedDTO = orderMapper.toDto(updatedOrder);
+        return ResponseEntity.ok(updatedDTO);
+    }
+
 }
