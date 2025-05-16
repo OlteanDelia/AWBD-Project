@@ -19,12 +19,14 @@ public class CartService {
     private final CartRepository cartRepository;
     private final BookRepository bookRepository;
     private final UserRepository userRepository;
+    private final SaleService saleService;
 
     @Autowired
-    public CartService(CartRepository cartRepository, BookRepository bookRepository, UserRepository userRepository) {
+    public CartService(CartRepository cartRepository, BookRepository bookRepository, UserRepository userRepository, SaleService saleService) {
         this.cartRepository = cartRepository;
         this.bookRepository = bookRepository;
         this.userRepository = userRepository;
+        this.saleService = saleService;
     }
 
     public Cart getCartByUserId(Long userId){
@@ -71,4 +73,6 @@ public class CartService {
     public double calculateTotalPrice(Long cartId){
         return cartRepository.calculateTotalPrice(cartId);
     }
+
+    // apply sale to cart to the books from the category of the sale
 }
