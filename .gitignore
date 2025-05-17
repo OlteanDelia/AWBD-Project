@@ -34,7 +34,5 @@ build/
 # Spring Boot
 # Uncomment the following line to ignore the application.properties file
 .vscode/
-/src/main/resources/application-dev.properties
-/src/main/resources/application-test.properties
-pom.xml
+
 
