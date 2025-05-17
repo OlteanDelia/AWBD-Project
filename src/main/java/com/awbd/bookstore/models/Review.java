@@ -29,10 +29,10 @@ public class Review {
     public Review() {
     }
 
-    public Review(String content, int rating, String createdAt, User user, Book book) {
+    public Review(String content,User user, Book book) {
         this.content = content;
-        this.rating = rating;
-        this.createdAt = createdAt;
+
+        this.createdAt = java.time.LocalDate.now().toString();
         this.user = user;
         this.book = book;
     }
