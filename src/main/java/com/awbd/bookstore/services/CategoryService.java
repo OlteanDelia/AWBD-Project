@@ -38,4 +38,8 @@ public class CategoryService {
         return category.getBooks();
     }
 
+    public List<Category> getAllCategories() {
+        return categoryRepository.findAll();
+    }
+
 }

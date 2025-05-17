@@ -11,6 +11,7 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.ArrayList;
+import java.util.HashSet;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -57,7 +58,7 @@ public class WishlistMapper {
                     .map(id -> bookRepository.findById(id)
                             .orElseThrow(() -> new EntityNotFoundException("Book not found with id: " + id)))
                     .collect(Collectors.toList());
-            wishlist.setBooks(books);
+            wishlist.setBooks((HashSet<Book>) books);
         }
 
         return wishlist;

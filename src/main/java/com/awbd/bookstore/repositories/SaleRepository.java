@@ -15,8 +15,9 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     //dupa cod
     Sale findBySaleCode(String saleCode);
 
-    // promotii active
-    List<Sale> findByIsActive(Boolean isActive);
+    // get all active sales
+    @Query("SELECT s FROM Sale s WHERE s.isActive = true")
+    List<Sale> findAllActiveSales();
 
     // verificare daca promotia e activa
     boolean existsByIsActiveAndSaleCode(Boolean isActive, String saleCode);
@@ -25,7 +26,7 @@ public interface SaleRepository extends JpaRepository<Sale, Long> {
     @Query("SELECT s FROM Sale s JOIN s.categories c WHERE c.id = :categoryId AND s.isActive = true")
     List<Sale> findActiveSalesByCategoryId(@Param("categoryId") Long categoryId);
 
-    // promotii care vor expira
-    @Query("SELECT s FROM Sale s WHERE s.isActive = true AND s.endDate BETWEEN :now AND :future")
-    List<Sale> findSalesEndingSoon(@Param("now") LocalDateTime now, @Param("future") LocalDateTime future);
+    // get sale by id
+    @Query("SELECT s FROM Sale s WHERE s.id = :id")
+    Sale findSaleById(@Param("id") Long id);
 }

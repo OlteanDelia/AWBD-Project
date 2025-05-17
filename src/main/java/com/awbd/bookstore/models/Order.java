@@ -29,9 +29,18 @@ public class Order {
             joinColumns = @JoinColumn(name = "order_id"),
             inverseJoinColumns = @JoinColumn(name = "book_id")
     )
+
     private Set<Book> books = new HashSet<>();
 
     private LocalDateTime orderDate;
+
+    private Double totalPrice;
+
+    // only one sale per order
+    @OneToOne
+    @JoinColumn(name = "sale_id", unique = true)
+    private Sale sale;
+
 
     {
         this.orderDate = LocalDateTime.now();
@@ -48,4 +57,5 @@ public class Order {
     public void removeBook(Book book) {
         this.books.remove(book);
     }
+
 }

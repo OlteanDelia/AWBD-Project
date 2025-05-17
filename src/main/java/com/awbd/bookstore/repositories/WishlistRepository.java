@@ -1,5 +1,6 @@
 package com.awbd.bookstore.repositories;
 
+import com.awbd.bookstore.models.Book;
 import com.awbd.bookstore.models.Wishlist;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Query;
@@ -19,5 +20,8 @@ public interface WishlistRepository extends JpaRepository<Wishlist, Long> {
 
     @Query("SELECT COUNT(b) FROM Wishlist w JOIN w.books b WHERE w.id = :wishlistId")
     long countBooks(@Param("wishlistId") Long wishlistId);
+
+    @Query("SELECT book FROM Wishlist w JOIN w.books book WHERE w.id = :wishlistId")
+    List<Book> findBooksByWishlistId(@Param("wishlistId") Long wishlistId);
 
 }
