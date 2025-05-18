@@ -8,18 +8,18 @@ import com.awbd.bookstore.annotations.RequireAdmin;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
+import java.net.URI;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
 
 @RestController
 @RequestMapping("/api/sales")
 public class SaleController {
 
-    private final SaleService saleService;
-    private final SaleMapper saleMapper;
+    private SaleService saleService;
+    private SaleMapper saleMapper;
     private static final Logger logger = LoggerFactory.getLogger(SaleController.class);
 
     public SaleController(SaleService saleService, SaleMapper saleMapper) {
@@ -29,45 +29,59 @@ public class SaleController {
 
     @PostMapping
     @RequireAdmin
-    public ResponseEntity<SaleDTO> createSale(@RequestBody SaleDTO saleDTO) {
+    public ResponseEntity<Sale> createSale(
+            @RequestBody
+            @Valid
+            SaleDTO saleDTO) {
         Sale sale = saleMapper.toEntity(saleDTO);
         Sale saved = saleService.create(sale, saleDTO.getCategoryIds());
         logger.info("Created sale with ID: {}", saved.getId());
-        return ResponseEntity.ok(saleMapper.toDto(saved));
+
+        return ResponseEntity.created(URI.create("/api/sales/" + saved.getId()))
+                .body(saved);
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<SaleDTO> getSaleById(@PathVariable Long id) {
+    public ResponseEntity<Sale> getSaleById(@PathVariable Long id) {
         Sale sale = saleService.getById(id);
-        if (sale == null) {
-            logger.warn("Sale with ID {} not found", id);
-            return ResponseEntity.notFound().build();
-        }
         logger.info("Retrieved sale with ID: {}", id);
-        return ResponseEntity.ok(saleMapper.toDto(sale));
+        return ResponseEntity.ok(sale);
     }
 
     @GetMapping
-    public ResponseEntity<List<SaleDTO>> getAllSales() {
+    public List<Sale> getAllSales() {
         List<Sale> sales = saleService.getAll();
-        List<SaleDTO> dtos = sales.stream()
-                .map(saleMapper::toDto)
-                .collect(Collectors.toList());
-        logger.info("Retrieved {} sales", dtos.size());
-        return ResponseEntity.ok(dtos);
+        logger.info("Retrieved {} sales", sales.size());
+        return sales;
+    }
+
+    @GetMapping("/active")
+    public List<Sale> getActiveSales() {
+        List<Sale> sales = saleService.getAllActiveSales();
+        logger.info("Retrieved {} active sales", sales.size());
+        return sales;
     }
 
     @PutMapping("/{id}")
     @RequireAdmin
-    public ResponseEntity<SaleDTO> updateSale(@PathVariable Long id, @RequestBody SaleDTO saleDTO) {
+    public ResponseEntity<Sale> updateSale(
+            @PathVariable
+            Long id,
+
+            @RequestBody
+            @Valid
+            SaleDTO saleDTO) {
+
+        if (saleDTO.getId() != null && !id.equals(saleDTO.getId())) {
+            logger.warn("ID mismatch: path ID {} doesn't match body ID {}", id, saleDTO.getId());
+            throw new RuntimeException("Id from path does not match with id from request");
+        }
+
         Sale sale = saleMapper.toEntity(saleDTO);
         Sale updated = saleService.update(id, sale, saleDTO.getCategoryIds());
-        if (updated == null) {
-            logger.warn("Sale with ID {} not found for update", id);
-            return ResponseEntity.notFound().build();
-        }
         logger.info("Updated sale with ID: {}", id);
-        return ResponseEntity.ok(saleMapper.toDto(updated));
+
+        return ResponseEntity.ok(updated);
     }
 
     @DeleteMapping("/{id}")

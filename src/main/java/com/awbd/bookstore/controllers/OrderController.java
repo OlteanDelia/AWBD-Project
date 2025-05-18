@@ -2,7 +2,7 @@ package com.awbd.bookstore.controllers;
 
 import com.awbd.bookstore.DTOs.OrderDTO;
 import com.awbd.bookstore.annotations.RequireAdmin;
-import com.awbd.bookstore.exceptions.UserNotFoundException;
+import com.awbd.bookstore.exceptions.user.UserNotFoundException;
 import com.awbd.bookstore.mappers.OrderMapper;
 import com.awbd.bookstore.models.Book;
 import com.awbd.bookstore.models.Cart;
@@ -56,7 +56,7 @@ public class OrderController {
         String username = jwtUtil.getUsernameFromToken(token);
 
         User user = userService.findByUsername(username)
-                .orElseThrow(() -> new UserNotFoundException());
+                .orElseThrow(() -> new UserNotFoundException("User not found: " + username));
 
 
         Cart cart = cartService.getCartByUserId(user.getId());
@@ -88,7 +88,7 @@ public class OrderController {
         String username = jwtUtil.getUsernameFromToken(token);
 
         User user = userService.findByUsername(username)
-                .orElseThrow(() -> new UserNotFoundException());
+                .orElseThrow(() -> new UserNotFoundException("User not found: " + username));
 
         List<Order> orders = orderService.getUserOrderHistory(user);
         if (orders.isEmpty()) {

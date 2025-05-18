@@ -1,6 +1,7 @@
 package com.awbd.bookstore.services;
 
-import com.awbd.bookstore.exceptions.AuthorNotFoundException;
+import com.awbd.bookstore.exceptions.author.AuthorAlreadyExistsException;
+import com.awbd.bookstore.exceptions.author.AuthorNotFoundException;
 import com.awbd.bookstore.models.Author;
 import com.awbd.bookstore.repositories.AuthorRepository;
 import org.springframework.stereotype.Service;
@@ -10,7 +11,7 @@ import java.util.List;
 @Service
 public class AuthorService {
 
-    private final AuthorRepository authorRepository;
+    private AuthorRepository authorRepository;
 
     public AuthorService(AuthorRepository authorRepository) {
         this.authorRepository = authorRepository;
@@ -18,16 +19,14 @@ public class AuthorService {
 
     public Author create(Author author) {
         if (authorRepository.existsByNameAndBirthDate(author.getName(), author.getBirthDate())) {
-            throw new IllegalStateException(
-                    "Author with name '" + author.getName() + "' and birth date '" + author.getBirthDate() + "' already exists."
-            );
+            throw new AuthorAlreadyExistsException("Author already exists");
         }
         return authorRepository.save(author);
     }
 
     public Author getById(Long id) {
         return authorRepository.findById(id)
-                .orElseThrow(() -> new AuthorNotFoundException(id));
+                .orElseThrow(() -> new AuthorNotFoundException("Author with ID " + id + " not found"));
     }
 
     public List<Author> getAll() {
@@ -42,14 +41,13 @@ public class AuthorService {
                     existingAuthor.setBirthDate(updatedAuthor.getBirthDate());
                     return authorRepository.save(existingAuthor);
                 })
-                .orElseThrow(() -> new AuthorNotFoundException(id));
+                .orElseThrow(() -> new AuthorNotFoundException("Author with ID " + id + " not found"));
     }
 
     public void delete(Long id) {
-        if (!authorRepository.existsById(id)) {
-            throw new AuthorNotFoundException(id);
+        if(!authorRepository.existsById(id)) {
+            throw new AuthorNotFoundException("Author with ID " + id + " not found");
         }
         authorRepository.deleteById(id);
     }
 }
-

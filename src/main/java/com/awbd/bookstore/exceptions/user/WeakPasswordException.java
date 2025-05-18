@@ -1,4 +1,4 @@
-package com.awbd.bookstore.exceptions;
+package com.awbd.bookstore.exceptions.user;
 
 public class WeakPasswordException extends RuntimeException {
     public WeakPasswordException(String message) {
