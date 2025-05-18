@@ -13,11 +13,15 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RestController
 @RequestMapping("/api/books")
 public class BookController {
     private final BookService bookService;
     private final BookMapper bookMapper;
+    private static final Logger logger = LoggerFactory.getLogger(BookController.class);
 
     @Autowired
     public BookController(BookService bookService, BookMapper bookMapper) {
@@ -28,12 +32,14 @@ public class BookController {
     @GetMapping
     public ResponseEntity<List<BookDTO>> getAllBooks() {
         List<Book> books = bookService.getAllBooks();
+        logger.info("Fetched all books");
         return ResponseEntity.ok(bookMapper.toDtoList(books));
     }
 
     @GetMapping("/search/{title}")
     public ResponseEntity<List<BookDTO>> searchBooks(@PathVariable String title) {
         List<Book> books = bookService.searchByTitle(title);
+        logger.info("Searched books with title: {}", title);
         return ResponseEntity.ok(bookMapper.toDtoList(books));
     }
 
@@ -43,6 +49,7 @@ public class BookController {
 
         Book book = bookMapper.toEntity(bookDto);
         Book savedBook = bookService.addBook(book);
+        logger.info("Added new book: {}", bookDto.getTitle());
         return ResponseEntity.status(HttpStatus.CREATED)
                 .body(bookMapper.toDto(savedBook));
     }
@@ -50,6 +57,7 @@ public class BookController {
     @GetMapping("/in-stock")
     public ResponseEntity<List<BookDTO>> getInStockBooks() {
         List<Book> books = bookService.getBooksInStock();
+        logger.info("Fetched all books in stock");
         return ResponseEntity.ok(bookMapper.toDtoList(books));
     }
 

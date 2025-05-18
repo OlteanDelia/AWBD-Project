@@ -12,7 +12,8 @@ import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 @RestController
 @RequestMapping("/api/cart")
 public class CartController {
@@ -20,6 +21,7 @@ public class CartController {
     private final JwtUtil jwtUtil;
     private final UserService userService;
     private final CartMapper cartMapper;
+    private static final Logger logger = LoggerFactory.getLogger(CartController.class);
 
     @Autowired
     public CartController(CartService cartService, JwtUtil jwtUtil, UserService userService, CartMapper cartMapper) {
@@ -41,7 +43,9 @@ public class CartController {
 
         String username = jwtUtil.getUsernameFromToken(token);
         if (username == null) {
+            logger.error("Invalid token: {}", token);
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+
         }
 
 
@@ -52,6 +56,8 @@ public class CartController {
 
         Cart cart = cartService.getCartByUserId(user.getId());
         cartService.addBookToCart(cart.getId(), bookId);
+        logger.info("Book with ID {} added to cart with ID {}", bookId, cart.getId());
+
 
 
         return ResponseEntity.ok(cartMapper.toDto(cart));
@@ -73,6 +79,8 @@ public class CartController {
 
         Cart cart = cartService.getCartByUserId(user.getId());
         double totalPrice = cartService.calculateTotalPrice(cart.getId());
+
+        logger.info("Total price for cart with ID {}: {}", cart.getId(), totalPrice);
 
         return ResponseEntity.ok(totalPrice);
     }

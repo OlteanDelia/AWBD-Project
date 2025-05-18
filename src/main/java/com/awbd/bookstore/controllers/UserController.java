@@ -22,6 +22,9 @@ import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 
 @RestController
 @RequestMapping("/api/users")
@@ -29,6 +32,7 @@ public class UserController {
     private final UserService userService;
     private final UserMapper userMapper;
     private final JwtUtil jwtUtil;
+    private static final Logger logger = LoggerFactory.getLogger(UserController.class);
 
     @Autowired
     public UserController(UserService userService, UserMapper userMapper, JwtUtil jwtUtil) {
@@ -50,18 +54,18 @@ public class UserController {
                 User.Role role = User.Role.valueOf(registerRequest.getRole());
                 newUser.setRole(role);
             } catch (IllegalArgumentException e) {
-                System.out.println("LOG: Eroare la convertire rolului: " + e.getMessage());
+                logger.error("Error at role converison");
                 return ResponseEntity.badRequest().body(null);
             }
 
             User createdUser = userService.create(newUser);
-            System.out.println("DEBUG: User creat în baza de date cu ID: " + createdUser.getId());
+            logger.info("User created with id "+ createdUser.getId() );
 
             UserDTO dto = userMapper.toDto(createdUser);
 
             return ResponseEntity.ok(dto);
         } catch (Exception e) {
-            System.out.println("LOG: Eroare la register: " + e.getClass().getName() + ": " + e.getMessage());
+            logger.error("Error at register: " + e.getClass().getName() + ": " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -81,9 +85,9 @@ public class UserController {
 
 
             if (encodedPassword.equals(user.getPassword())) {
-                System.out.println("Authorized");
+                logger.info("LOG: Authorized");
                 String token = jwtUtil.generateToken(user.getUsername(), user.getRole());
-                System.out.println("Token: " + token);
+                logger.info("LOG: Token: " + token);
 
 
                 LoginResponseDTO response = new LoginResponseDTO(
@@ -91,13 +95,13 @@ public class UserController {
                         token
                 );
 
-                System.out.println("Token" + token);
+                logger.info("Token" + token);
 
                 return ResponseEntity.ok(response);
             }
         }
 
-        System.out.println("Unauthorized");
+        logger.info("LOG: Unauthorized");
 
         return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
     }
@@ -116,6 +120,7 @@ public class UserController {
 
         Long idLong = Long.parseLong(id);
         User updatedUser = userService.update(idLong, userMapper.toEntity(userDto));
+        logger.info("Update for user with ID " + idLong);
         return ResponseEntity.ok(userMapper.toDto(updatedUser));
     }
 
@@ -125,7 +130,7 @@ public class UserController {
 
         userService.delete(id);
         Map<String, String> response = new HashMap<>();
-        response.put("message", "User deleted successfully");
+        logger.info("User with ID " + id + " was deleted");
 
         return ResponseEntity.ok(response);
 
@@ -134,7 +139,7 @@ public class UserController {
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpSession session) {
         session.invalidate();
-
+        logger.info("Logout");
         return ResponseEntity.ok().build();
 
     }
