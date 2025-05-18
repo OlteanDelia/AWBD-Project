@@ -1,7 +1,7 @@
 
 package com.awbd.bookstore.services;
 
-import com.awbd.bookstore.exceptions.SaleNotFoundException;
+import com.awbd.bookstore.exceptions.order.SaleNotFoundException;
 import com.awbd.bookstore.models.Category;
 import com.awbd.bookstore.models.Sale;
 import com.awbd.bookstore.repositories.CategoryRepository;
@@ -9,7 +9,6 @@ import com.awbd.bookstore.repositories.SaleRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
-import java.util.Optional;
 
 @Service
 public class SaleService {
@@ -32,7 +31,7 @@ public class SaleService {
 
     public Sale getById(Long id) {
         return saleRepository.findById(id)
-                .orElseThrow(() -> new SaleNotFoundException(id));
+                .orElseThrow(() -> new SaleNotFoundException("Sale with ID " + id + " not found"));
     }
 
     public List<Sale> getAll() {
@@ -55,12 +54,12 @@ public class SaleService {
 
                     return saleRepository.save(existingSale);
                 })
-                .orElseThrow(() -> new SaleNotFoundException(id));
+                .orElseThrow(() -> new SaleNotFoundException("Sale with ID " + id + " not found"));
     }
 
     public void delete(Long id) {
         if (!saleRepository.existsById(id)) {
-            throw new SaleNotFoundException(id);
+            throw new SaleNotFoundException("Sale with ID " + id + " not found");
         }
         saleRepository.deleteById(id);
     }
