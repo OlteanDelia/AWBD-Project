@@ -2,11 +2,13 @@ package com.awbd.bookstore.controllers;
 
 import com.awbd.bookstore.DTOs.BookDTO;
 import com.awbd.bookstore.DTOs.CategoryDTO;
+import com.awbd.bookstore.DTOs.UserDTO;
 import com.awbd.bookstore.annotations.RequireAdmin;
 import com.awbd.bookstore.mappers.BookMapper;
 import com.awbd.bookstore.mappers.CategoryMapper;
 import com.awbd.bookstore.models.Book;
 import com.awbd.bookstore.models.Category;
+import com.awbd.bookstore.models.User;
 import com.awbd.bookstore.services.CategoryService;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
@@ -14,7 +16,11 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+
+import java.util.HashMap;
+
 import java.util.List;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/categories")
@@ -47,6 +53,19 @@ public class CategoryController {
         return ResponseEntity.ok(bookMapper.toDtoList(books));
     }
 
+
+    @DeleteMapping("/{id}")
+    @RequireAdmin
+    public ResponseEntity<Map<String, String>> deleteCategory(@PathVariable Long id) {
+
+        categoryService.delete(id);
+        Map<String, String> response = new HashMap<>();
+        response.put("message", "Category deleted successfully");
+
+        return ResponseEntity.ok(response);
+
+    }
+
     @GetMapping("/all")
     public ResponseEntity<List<Category>> getAllCategories(){
         List<Category> categories = categoryService.getAllCategories();
@@ -54,6 +73,13 @@ public class CategoryController {
 }
 
 
+    @PutMapping("/{id}")
+    @RequireAdmin
+    public ResponseEntity<CategoryDTO> updateCategory(@PathVariable String id, @RequestBody CategoryDTO categoryDto) {
 
+        Long idLong = Long.parseLong(id);
+        Category updatedCategory = categoryService.update(idLong, categoryMapper.toEntity(categoryDto));
+        return ResponseEntity.ok(categoryMapper.toDto(updatedCategory));
+    }
 
 }
