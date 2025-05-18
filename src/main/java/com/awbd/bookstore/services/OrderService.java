@@ -87,7 +87,7 @@ public class OrderService {
     public void applySaleToOrder(Long orderId, Long saleId) {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException());
-        order.setSale(saleService.getSaleById(saleId));
+        order.setSale(saleService.getById(saleId));
 
         orderRepository.save(order);
     }
