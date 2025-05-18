@@ -1,8 +1,8 @@
 package com.awbd.bookstore.services;
 
 
-import com.awbd.bookstore.exceptions.BookNotFoundException;
-import com.awbd.bookstore.exceptions.UserNotFoundException;
+import com.awbd.bookstore.exceptions.book.BookNotFoundException;
+import com.awbd.bookstore.exceptions.user.UserNotFoundException;
 import com.awbd.bookstore.models.Book;
 import com.awbd.bookstore.models.Review;
 import com.awbd.bookstore.models.User;
@@ -30,10 +30,10 @@ public class ReviewService {
     // add review
     public Review addReview(Review review, Long bookId, Long userId){
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException());
+                .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found."));
 
         Book book = bookRepository.findById(bookId)
-                .orElseThrow(() -> new BookNotFoundException());
+                .orElseThrow(() -> new BookNotFoundException("Book with ID " + bookId + " not found."));
 
         review.setUser(user);
         review.setBook(book);

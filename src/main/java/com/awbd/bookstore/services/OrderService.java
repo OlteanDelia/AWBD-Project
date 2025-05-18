@@ -1,8 +1,8 @@
 package com.awbd.bookstore.services;
 
-import com.awbd.bookstore.exceptions.BookNotFoundException;
+import com.awbd.bookstore.exceptions.book.BookNotFoundException;
 import com.awbd.bookstore.exceptions.OrderNotFoundException;
-import com.awbd.bookstore.exceptions.UserNotFoundException;
+import com.awbd.bookstore.exceptions.user.UserNotFoundException;
 import com.awbd.bookstore.models.*;
 import com.awbd.bookstore.repositories.BookRepository;
 import com.awbd.bookstore.repositories.OrderRepository;
@@ -31,14 +31,14 @@ public class OrderService {
 
     public Order createOrder(Long userId, List<Long> bookIds) {
         User user = userRepository.findById(userId)
-                .orElseThrow(() -> new UserNotFoundException());
+                .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found"));
 
 
         Order order = new Order(user);
 
         bookIds.forEach(bookId -> {
             Book book = bookRepository.findById(bookId)
-                    .orElseThrow(() -> new BookNotFoundException());
+                    .orElseThrow(() -> new BookNotFoundException("Book with ID " + bookId + " not found"));
             order.addBook(book);
         });
 
@@ -61,12 +61,12 @@ public class OrderService {
 
     public Order updateOrder(Long orderId, Long userId, Set<Long> bookIds) {
         Order order = orderRepository.findById(orderId)
-                .orElseThrow(OrderNotFoundException::new);
+                .orElseThrow(() -> new OrderNotFoundException());
 
         // Optional: update user
         if (userId != null && !userId.equals(order.getUser().getId())) {
             User user = userRepository.findById(userId)
-                    .orElseThrow(UserNotFoundException::new);
+                    .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found"));
             order.setUser(user);
         }
 
@@ -74,7 +74,7 @@ public class OrderService {
         Set<Book> books = new HashSet<>();
         for (Long bookId : bookIds) {
             Book book = bookRepository.findById(bookId)
-                    .orElseThrow(BookNotFoundException::new);
+                    .orElseThrow(() -> new BookNotFoundException("Book with ID " + bookId + " not found"));
             books.add(book);
         }
         order.setBooks(books);

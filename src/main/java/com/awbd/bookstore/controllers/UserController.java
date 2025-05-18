@@ -5,7 +5,7 @@ import com.awbd.bookstore.DTOs.LoginResponseDTO;
 import com.awbd.bookstore.DTOs.RegisterRequestDTO;
 import com.awbd.bookstore.DTOs.UserDTO;
 import com.awbd.bookstore.annotations.RequireAdmin;
-import com.awbd.bookstore.exceptions.UserNotFoundException;
+import com.awbd.bookstore.exceptions.user.UserNotFoundException;
 import com.awbd.bookstore.mappers.UserMapper;
 import com.awbd.bookstore.models.User;
 import com.awbd.bookstore.services.UserService;
@@ -111,7 +111,7 @@ public class UserController {
         long idLong = Long.parseLong(id);
         return userService.findById(idLong)
                 .map(user -> ResponseEntity.ok(userMapper.toDto(user)))
-                .orElseThrow(() -> new UserNotFoundException());
+                .orElseThrow(() -> new UserNotFoundException("User with ID " + id + " not found."));
 
     }
 

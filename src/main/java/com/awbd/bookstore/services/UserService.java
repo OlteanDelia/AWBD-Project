@@ -1,12 +1,13 @@
 package com.awbd.bookstore.services;
 
 import com.awbd.bookstore.exceptions.*;
+import com.awbd.bookstore.exceptions.user.UserCreationException;
+import com.awbd.bookstore.exceptions.user.UserNotFoundException;
 import com.awbd.bookstore.models.Cart;
 import com.awbd.bookstore.models.User;
 import com.awbd.bookstore.models.Wishlist;
 import com.awbd.bookstore.repositories.CartRepository;
 import com.awbd.bookstore.repositories.UserRepository;
-import com.awbd.bookstore.repositories.WishlistRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -128,12 +129,12 @@ public class UserService {
                     }
                     return userRepository.save(existingUser);
                 })
-                .orElseThrow(() -> new UserNotFoundException());
+                .orElseThrow(() -> new UserNotFoundException("User with id " + id + " not found."));
     }
 
     public void delete(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new UserNotFoundException();
+            throw new UserNotFoundException("User with id " + id + " not found.");
         }
         userRepository.deleteById(id);
     }
