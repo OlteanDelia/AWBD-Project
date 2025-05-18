@@ -39,6 +39,7 @@ public class CategoryService {
         return category.getBooks();
     }
 
+
     public void delete(Long id) {
         if (!categoryRepository.existsById(id)) {
             throw new CategoryNotFoundException();
@@ -65,6 +66,8 @@ public class CategoryService {
     }
 
 
-
+    public List<Category> getAllCategories() {
+        return categoryRepository.findAll();
+    }
 
 }

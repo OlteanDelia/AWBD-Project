@@ -1,3 +1,4 @@
+
 package com.awbd.bookstore.services;
 
 import com.awbd.bookstore.exceptions.SaleNotFoundException;
@@ -63,4 +64,13 @@ public class SaleService {
         }
         saleRepository.deleteById(id);
     }
+
+
+
+    public List<Sale> getAllActiveSales() {
+        return saleRepository.findAllActiveSales();
+    }
+
+
+
 }

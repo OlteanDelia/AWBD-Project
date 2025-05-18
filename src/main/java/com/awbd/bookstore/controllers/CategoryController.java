@@ -51,6 +51,7 @@ public class CategoryController {
         return ResponseEntity.ok(bookMapper.toDtoList(books));
     }
 
+
     @DeleteMapping("/{id}")
     @RequireAdmin
     public ResponseEntity<Map<String, String>> deleteCategory(@PathVariable Long id) {
@@ -62,6 +63,12 @@ public class CategoryController {
         return ResponseEntity.ok(response);
 
     }
+
+    @GetMapping("/all")
+    public ResponseEntity<List<Category>> getAllCategories(){
+        List<Category> categories = categoryService.getAllCategories();
+        return ResponseEntity.ok(categories);
+}
 
 
     @PutMapping("/{id}")
