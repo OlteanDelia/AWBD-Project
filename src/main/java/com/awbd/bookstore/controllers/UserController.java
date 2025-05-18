@@ -16,11 +16,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
-import javax.validation.Valid;
+import jakarta.validation.Valid;
 import java.util.Base64;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.Optional;
+
 
 @RestController
 @RequestMapping("/api/users")
@@ -33,20 +34,39 @@ public class UserController {
     public UserController(UserService userService, UserMapper userMapper, JwtUtil jwtUtil) {
         this.userService = userService;
         this.userMapper = userMapper;
-        this.jwtUtil = new JwtUtil();
+        this.jwtUtil = jwtUtil;
     }
 
 
     @PostMapping("/register")
     public ResponseEntity<UserDTO> registerUser(@Valid @RequestBody RegisterRequestDTO registerRequest) {
-        User newUser = new User();
-        newUser.setUsername(registerRequest.getUsername());
-        newUser.setPassword(registerRequest.getPassword());
-        newUser.setRole(registerRequest.getRole());
 
-        User createdUser = userService.create(newUser);
-        return ResponseEntity.ok(userMapper.toDto(createdUser));
+        try {
+            User newUser = new User();
+            newUser.setUsername(registerRequest.getUsername());
+            newUser.setPassword(registerRequest.getPassword());
+            try {
+
+                User.Role role = User.Role.valueOf(registerRequest.getRole());
+                newUser.setRole(role);
+            } catch (IllegalArgumentException e) {
+                System.out.println("LOG: Eroare la convertire rolului: " + e.getMessage());
+                return ResponseEntity.badRequest().body(null);
+            }
+
+            User createdUser = userService.create(newUser);
+            System.out.println("DEBUG: User creat în baza de date cu ID: " + createdUser.getId());
+
+            UserDTO dto = userMapper.toDto(createdUser);
+
+            return ResponseEntity.ok(dto);
+        } catch (Exception e) {
+            System.out.println("LOG: Eroare la register: " + e.getClass().getName() + ": " + e.getMessage());
+            e.printStackTrace();
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
     }
+
 
     @PostMapping("/login")
     public ResponseEntity<LoginResponseDTO> login(@RequestBody LoginRequestDTO loginRequest) {
@@ -71,7 +91,7 @@ public class UserController {
                         token
                 );
 
-                System.out.println("TOKen" + token);
+                System.out.println("Token" + token);
 
                 return ResponseEntity.ok(response);
             }
@@ -119,4 +139,5 @@ public class UserController {
 
     }
 }
+
 
