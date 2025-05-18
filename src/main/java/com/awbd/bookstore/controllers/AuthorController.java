@@ -12,12 +12,16 @@ import org.springframework.web.bind.annotation.*;
 import java.net.URI;
 import java.util.List;
 
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+
 @RestController
 @RequestMapping("/api/authors")
 public class AuthorController {
 
     private AuthorService authorService;
     private AuthorMapper authorMapper;
+    private static final Logger logger = LoggerFactory.getLogger(AuthorController.class);
 
     public AuthorController(AuthorService authorService, AuthorMapper authorMapper) {
         this.authorService = authorService;
@@ -32,6 +36,7 @@ public class AuthorController {
             AuthorDTO authorDTO) {
         Author author = authorMapper.toEntity(authorDTO);
         Author createdAuthor = authorService.create(author);
+        logger.info("Created new author: {}", authorDTO.getName());
         return ResponseEntity.created(URI.create("/api/authors/" + createdAuthor.getId()))
                 .body(createdAuthor);
     }
@@ -61,6 +66,7 @@ public class AuthorController {
         }
 
         Author author = authorMapper.toEntity(authorDTO);
+        logger.info("Updating author with id: {}", id);
         return ResponseEntity.ok()
                 .body(authorService.update(id, author));
     }
@@ -69,6 +75,7 @@ public class AuthorController {
     @RequireAdmin
     public ResponseEntity<Void> deleteAuthor(@PathVariable Long id) {
         authorService.delete(id);
+        logger.info("Deleted author with id: {}", id);
         return ResponseEntity.noContent().build();
     }
 }
