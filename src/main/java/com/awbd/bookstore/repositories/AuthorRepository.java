@@ -15,4 +15,7 @@ public interface AuthorRepository extends JpaRepository<Author, Long> {
     List<Author> findByNameContaining(String nameFragment);
 
     boolean existsByName(String name);
+
+    boolean existsByNameAndBirthDate(String name, LocalDate birthDate);
+
 }

@@ -1,0 +1,63 @@
+package com.awbd.bookstore.controllers;
+
+import com.awbd.bookstore.DTOs.SaleDTO;
+import com.awbd.bookstore.models.Sale;
+import com.awbd.bookstore.services.SaleService;
+import com.awbd.bookstore.mappers.SaleMapper;
+import com.awbd.bookstore.annotations.RequireAdmin;
+import org.springframework.http.ResponseEntity;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+import java.util.stream.Collectors;
+
+@RestController
+@RequestMapping("/api/sales")
+public class SaleController {
+
+    private final SaleService saleService;
+    private final SaleMapper saleMapper;
+
+    public SaleController(SaleService saleService, SaleMapper saleMapper) {
+        this.saleService = saleService;
+        this.saleMapper = saleMapper;
+    }
+
+    @PostMapping
+    @RequireAdmin
+    public ResponseEntity<SaleDTO> createSale(@RequestBody SaleDTO saleDTO) {
+        Sale sale = saleMapper.toEntity(saleDTO);
+        Sale saved = saleService.create(sale, saleDTO.getCategoryIds());
+        return ResponseEntity.ok(saleMapper.toDto(saved));
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<SaleDTO> getSaleById(@PathVariable Long id) {
+        Sale sale = saleService.getById(id);
+        return ResponseEntity.ok(saleMapper.toDto(sale));
+    }
+
+    @GetMapping
+    public ResponseEntity<List<SaleDTO>> getAllSales() {
+        List<Sale> sales = saleService.getAll();
+        List<SaleDTO> dtos = sales.stream()
+                .map(saleMapper::toDto)
+                .collect(Collectors.toList());
+        return ResponseEntity.ok(dtos);
+    }
+
+    @PutMapping("/{id}")
+    @RequireAdmin
+    public ResponseEntity<SaleDTO> updateSale(@PathVariable Long id, @RequestBody SaleDTO saleDTO) {
+        Sale sale = saleMapper.toEntity(saleDTO);
+        Sale updated = saleService.update(id, sale, saleDTO.getCategoryIds());
+        return ResponseEntity.ok(saleMapper.toDto(updated));
+    }
+
+    @DeleteMapping("/{id}")
+    @RequireAdmin
+    public ResponseEntity<Void> deleteSale(@PathVariable Long id) {
+        saleService.delete(id);
+        return ResponseEntity.noContent().build();
+    }
+}

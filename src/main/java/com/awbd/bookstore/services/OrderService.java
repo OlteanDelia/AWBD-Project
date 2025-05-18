@@ -10,7 +10,9 @@ import com.awbd.bookstore.repositories.UserRepository;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
+import java.util.HashSet;
 import java.util.List;
+import java.util.Set;
 
 @Service
 public class OrderService {
@@ -56,6 +58,30 @@ public class OrderService {
         return orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException());
     }
+
+    public Order updateOrder(Long orderId, Long userId, Set<Long> bookIds) {
+        Order order = orderRepository.findById(orderId)
+                .orElseThrow(OrderNotFoundException::new);
+
+        // Optional: update user
+        if (userId != null && !userId.equals(order.getUser().getId())) {
+            User user = userRepository.findById(userId)
+                    .orElseThrow(UserNotFoundException::new);
+            order.setUser(user);
+        }
+
+        // Update books
+        Set<Book> books = new HashSet<>();
+        for (Long bookId : bookIds) {
+            Book book = bookRepository.findById(bookId)
+                    .orElseThrow(BookNotFoundException::new);
+            books.add(book);
+        }
+        order.setBooks(books);
+
+        return orderRepository.save(order);
+    }
+
 
 
     public void applySaleToOrder(Long orderId, Long saleId) {
