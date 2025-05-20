@@ -8,6 +8,7 @@ import com.awbd.bookstore.annotations.RequireAdmin;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import java.net.URI;
 import java.util.List;
@@ -29,7 +30,7 @@ public class AuthorController {
     }
 
     @PostMapping
-    @RequireAdmin
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Author> createAuthor(
             @RequestBody
             @Valid
@@ -53,7 +54,7 @@ public class AuthorController {
     }
 
     @PutMapping("/{id}")
-    @RequireAdmin
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Author> updateAuthor(
             @PathVariable
             Long id,
@@ -72,7 +73,7 @@ public class AuthorController {
     }
 
     @DeleteMapping("/{id}")
-    @RequireAdmin
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteAuthor(@PathVariable Long id) {
         authorService.delete(id);
         logger.info("Deleted author with id: {}", id);

@@ -11,6 +11,7 @@ import com.awbd.bookstore.services.CategoryService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import jakarta.validation.Valid;
 
@@ -38,7 +39,7 @@ public class CategoryController {
     }
 
     @PostMapping
-    @RequireAdmin
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Category> addCategory(
             @RequestBody
             @Valid
@@ -60,7 +61,7 @@ public class CategoryController {
     }
 
     @DeleteMapping("/{id}")
-    @RequireAdmin
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
         categoryService.delete(id);
         logger.info("Category with id {} deleted", id);
@@ -75,7 +76,7 @@ public class CategoryController {
     }
 
     @PutMapping("/{id}")
-    @RequireAdmin
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Category> updateCategory(
             @PathVariable
             Long id,
