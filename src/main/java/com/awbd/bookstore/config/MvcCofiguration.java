@@ -1,6 +1,7 @@
 package com.awbd.bookstore.config;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
+import org.springframework.web.servlet.config.annotation.ViewControllerRegistry;
 import org.springframework.web.servlet.config.annotation.WebMvcConfigurer;
 import org.springframework.web.servlet.handler.SimpleMappingExceptionResolver;
 
@@ -26,5 +27,12 @@ public class MvcCofiguration implements WebMvcConfigurer {
         r.setStatusCodes(statusCodes);
 
         return r;
+    }
+
+    @Override
+    public void addViewControllers(ViewControllerRegistry registry) {
+        registry.addViewController("/login").setViewName("login");
+        registry.addViewController("/register").setViewName("register");
+        registry.addViewController("/welcome").setViewName("welcome");
     }
 }

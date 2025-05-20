@@ -44,28 +44,45 @@ public class UserController {
 
     @PostMapping("/register")
     public ResponseEntity<UserDTO> registerUser(@Valid @RequestBody RegisterRequestDTO registerRequest) {
+        System.out.println("DEBUG: Endpoint accesat cu succes!");
+        System.out.println("DEBUG: Request primit: " + registerRequest);
 
         try {
-            User newUser = new User();
-            newUser.setUsername(registerRequest.getUsername());
-            newUser.setPassword(registerRequest.getPassword());
-            try {
+            System.out.println("DEBUG: Username din request: " + registerRequest.getUsername());
+            System.out.println("DEBUG: Password din request: " + registerRequest.getPassword());
+            System.out.println("DEBUG: Role din request: " + registerRequest.getRole());
 
+            User newUser = new User();
+            System.out.println("DEBUG: User creat");
+
+            newUser.setUsername(registerRequest.getUsername());
+            System.out.println("DEBUG: Username setat: " + newUser.getUsername());
+
+            newUser.setPassword(registerRequest.getPassword());
+            System.out.println("DEBUG: Password setat");
+
+            try {
+                System.out.println("DEBUG: Încercăm să convertim rolul: " + registerRequest.getRole());
                 User.Role role = User.Role.valueOf(registerRequest.getRole());
+                System.out.println("DEBUG: Rol convertit cu succes: " + role);
                 newUser.setRole(role);
+                System.out.println("DEBUG: Rol setat în user");
             } catch (IllegalArgumentException e) {
-                logger.error("Error at role converison");
+                System.out.println("DEBUG: EROARE la convertirea rolului: " + e.getMessage());
                 return ResponseEntity.badRequest().body(null);
             }
 
+            System.out.println("DEBUG: Încercăm să creăm userul în baza de date");
             User createdUser = userService.create(newUser);
-            logger.info("User created with id "+ createdUser.getId() );
+            System.out.println("DEBUG: User creat în baza de date cu ID: " + createdUser.getId());
 
+            System.out.println("DEBUG: Convertim user la DTO");
             UserDTO dto = userMapper.toDto(createdUser);
+            System.out.println("DEBUG: DTO creat cu succes");
 
             return ResponseEntity.ok(dto);
         } catch (Exception e) {
-            logger.error("Error at register: " + e.getClass().getName() + ": " + e.getMessage());
+            System.out.println("DEBUG: EROARE GENERALĂ: " + e.getClass().getName() + ": " + e.getMessage());
             e.printStackTrace();
             return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
         }
@@ -143,6 +160,7 @@ public class UserController {
         return ResponseEntity.ok().build();
 
     }
+
 }
 
 
