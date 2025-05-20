@@ -13,6 +13,7 @@ import java.net.URI;
 import java.util.List;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/sales")
@@ -28,7 +29,7 @@ public class SaleController {
     }
 
     @PostMapping
-    @RequireAdmin
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Sale> createSale(
             @RequestBody
             @Valid
@@ -63,7 +64,7 @@ public class SaleController {
     }
 
     @PutMapping("/{id}")
-    @RequireAdmin
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Sale> updateSale(
             @PathVariable
             Long id,
@@ -85,7 +86,7 @@ public class SaleController {
     }
 
     @DeleteMapping("/{id}")
-    @RequireAdmin
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteSale(@PathVariable Long id) {
         saleService.delete(id);
         logger.info("Deleted sale with ID: {}", id);

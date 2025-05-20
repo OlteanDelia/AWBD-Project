@@ -25,6 +25,11 @@ import java.util.Optional;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.security.access.prepost.PreAuthorize;
+
+
 
 @RestController
 @RequestMapping("/api/users")
@@ -41,7 +46,7 @@ public class UserController {
     }
 
     @PostMapping("/register")
-    public ResponseEntity<User> registerUser(
+    public ResponseEntity<UserDTO> registerUser(
             @RequestBody
             @Valid
             RegisterRequestDTO registerRequest) {
@@ -62,7 +67,7 @@ public class UserController {
         logger.info("User created with id {}", createdUser.getId());
 
         return ResponseEntity.created(URI.create("/api/users/" + createdUser.getId()))
-                .body(createdUser);
+                .body(userMapper.toDto(createdUser));
     }
 
     @PostMapping("/login")
@@ -122,7 +127,7 @@ public class UserController {
     }
 
     @DeleteMapping("/{id}")
-    @RequireAdmin
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.delete(id);
         logger.info("User with ID {} was deleted", id);
