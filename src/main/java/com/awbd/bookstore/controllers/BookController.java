@@ -29,10 +29,10 @@ public class BookController {
     }
 
     @GetMapping
-    public List<Book> getAllBooks() {
+    public List<BookDTO> getAllBooks() {
         List<Book> books = bookService.getAllBooks();
         logger.info("Fetched all books");
-        return books;
+        return bookMapper.toDtoList(books);
     }
 
     @GetMapping("/search/{title}")
@@ -44,7 +44,7 @@ public class BookController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Book> addBook(
+    public ResponseEntity<BookDTO> addBook(
             @RequestBody
             @Valid
             BookDTO bookDto) {
@@ -52,7 +52,7 @@ public class BookController {
         Book savedBook = bookService.addBook(book);
         logger.info("Added new book: {}", bookDto.getTitle());
         return ResponseEntity.created(URI.create("/api/books/" + savedBook.getId()))
-                .body(savedBook);
+                .body(bookMapper.toDto(savedBook));
     }
 
     @GetMapping("/in-stock")
