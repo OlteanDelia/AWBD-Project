@@ -102,6 +102,7 @@ public class UserController {
     public ResponseEntity<UserDTO> getUser(
             @PathVariable Long id,
             @RequestHeader("Authorization") String authHeader) {
+        System.out.println("Authorization header: " + authHeader);
 
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             logger.error("Invalid authorization header");
@@ -189,4 +190,8 @@ public class UserController {
         debug.put("contains_current_token", tokenBlacklistService.esteInvalid("token-de-test"));
         return ResponseEntity.ok(debug);
     }
+
 }
+
+
+
