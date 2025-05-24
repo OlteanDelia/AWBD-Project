@@ -5,7 +5,7 @@ import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
 
-import java.time.LocalDateTime;
+import java.time.LocalDate;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
@@ -27,10 +27,10 @@ public class Sale {
     private Double discountPercentage;
 
     @Column(nullable = false)
-    private LocalDateTime startDate;
+    private LocalDate startDate;
 
     @Column(nullable = false)
-    private LocalDateTime endDate;
+    private LocalDate endDate;
 
     private String description;
 
@@ -48,7 +48,7 @@ public class Sale {
         this.saleCode = generateSaleCode();
     }
 
-    public Sale(Double discountPercentage, LocalDateTime startDate, LocalDateTime endDate) {
+    public Sale(Double discountPercentage, LocalDate startDate, LocalDate endDate) {
         this.discountPercentage = discountPercentage;
         this.startDate = startDate;
         this.endDate = endDate;
@@ -69,9 +69,17 @@ public class Sale {
         category.getSales().remove(this);
     }
 
-    public boolean isValidAt(LocalDateTime dateTime) {
-        return isActive &&
-                dateTime.isAfter(startDate) &&
-                dateTime.isBefore(endDate);
+    public boolean updateStatusIfNeeded(){
+        LocalDate today = LocalDate.now();
+
+        if(today.isBefore(startDate) || today.isAfter(endDate)) {
+            this.isActive = false;
+            return false;
+        } else {
+            this.isActive = true;
+            return true;
+        }
+
     }
+
 }

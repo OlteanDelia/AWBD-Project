@@ -30,42 +30,47 @@ public class SaleController {
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Sale> createSale(
+    public ResponseEntity<SaleDTO> createSale(
             @RequestBody
             @Valid
             SaleDTO saleDTO) {
         Sale sale = saleMapper.toEntity(saleDTO);
         Sale saved = saleService.create(sale, saleDTO.getCategoryIds());
+        saved = saleService.getByIdWithStatusCheck(saved.getId());
         logger.info("Created sale with ID: {}", saved.getId());
 
         return ResponseEntity.created(URI.create("/api/sales/" + saved.getId()))
-                .body(saved);
+                .body(saleMapper.toDto(saved));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<Sale> getSaleById(@PathVariable Long id) {
+    public ResponseEntity<SaleDTO> getSaleById(@PathVariable Long id) {
         Sale sale = saleService.getById(id);
+        sale = saleService.getByIdWithStatusCheck(sale.getId());
         logger.info("Retrieved sale with ID: {}", id);
-        return ResponseEntity.ok(sale);
+        return ResponseEntity.ok(saleMapper.toDto(sale));
     }
 
     @GetMapping
-    public List<Sale> getAllSales() {
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<SaleDTO> getAllSales() {
         List<Sale> sales = saleService.getAll();
+        sales = saleService.getAllWithStatusCheck(sales);
         logger.info("Retrieved {} sales", sales.size());
-        return sales;
+        return saleMapper.toDtoList(sales);
     }
 
     @GetMapping("/active")
-    public List<Sale> getActiveSales() {
+    public List<SaleDTO> getActiveSales() {
         List<Sale> sales = saleService.getAllActiveSales();
+        sales = saleService.getAllWithStatusCheck(sales);
         logger.info("Retrieved {} active sales", sales.size());
-        return sales;
+        return saleMapper.toDtoList(sales);
     }
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Sale> updateSale(
+    public ResponseEntity<SaleDTO> updateSale(
             @PathVariable
             Long id,
 
@@ -80,9 +85,10 @@ public class SaleController {
 
         Sale sale = saleMapper.toEntity(saleDTO);
         Sale updated = saleService.update(id, sale, saleDTO.getCategoryIds());
+
         logger.info("Updated sale with ID: {}", id);
 
-        return ResponseEntity.ok(updated);
+        return ResponseEntity.ok(saleMapper.toDto(updated));
     }
 
     @DeleteMapping("/{id}")
