@@ -36,10 +36,10 @@ public class BookController {
     }
 
     @GetMapping("/search/{title}")
-    public List<Book> searchBooks(@PathVariable String title) {
+    public List<BookDTO> searchBooks(@PathVariable String title) {
         List<Book> books = bookService.searchByTitle(title);
         logger.info("Searched books with title: {}", title);
-        return books;
+        return bookMapper.toDtoList(books);
     }
 
     @PostMapping
@@ -56,9 +56,17 @@ public class BookController {
     }
 
     @GetMapping("/in-stock")
-    public List<Book> getInStockBooks() {
+    public List<BookDTO> getInStockBooks() {
         List<Book> books = bookService.getBooksInStock();
         logger.info("Fetched all books in stock");
-        return books;
+        return bookMapper.toDtoList(books);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
+        bookService.deleteBook(id);
+        logger.info("Deleted book with id: {}", id);
+        return ResponseEntity.noContent().build();
     }
 }
