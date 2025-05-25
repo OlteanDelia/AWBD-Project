@@ -1,43 +1,99 @@
 <!DOCTYPE html>
-<html xmlns="http://www.w3.org/1999/xhtml" xmlns:th="http://www.thymeleaf.org">
+<html xmlns:th="http://www.thymeleaf.org">
 <head>
     <meta charset="UTF-8">
     <title>Bookstore</title>
 </head>
 <body>
+<h1>Register</h1>
 
-<h2>Register</h2>
-
-<div th:if="${param.error}">
+<div id="errorMessage" style="color: red; display: none;">
     Registration failed. Please try again.
 </div>
 
-<div th:if="${param.success}">
-    Registration successful. You can now log in.
-</div>
+<form id="registrationForm" onsubmit="return submitForm(event)">
+    <div>
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required minlength="3" maxlength="50"/>
+    </div>
 
-<form th:action="@{/api/users/register}" method="post">
     <div>
-        <label> Username:
-            <input type="text" name="username" required/>
-        </label>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required minlength="6" onkeyup="checkPasswordMatch();"/>
     </div>
+
     <div>
-        <label> Password:
-            <input type="password" name="password" required/>
-        </label>
+        <label for="confirmPassword">Confirm Password:</label>
+        <input type="password" id="confirmPassword" name="confirmPassword" required minlength="6" onkeyup="checkPasswordMatch();"/>
+        <span id="passwordMatchError" style="color: red; display: none;">Passwords do not match!</span>
     </div>
+
     <div>
-        <label> Confirm Password:
-            <input type="password" name="confirmPassword" required/>
-        </label>
-    </div>
-    <div>
-        <input type="submit" value="Register"/>
+        <button type="submit">Register</button>
     </div>
 </form>
 
-<p>Already have an account? <a th:href="@{/login}">Login here</a>.</p>
+<div>
+    <p>Already have an account? <a th:href="@{/login}">Login</a></p>
+</div>
 
+<script>
+    function checkPasswordMatch() {
+        var password = document.getElementById("password").value;
+        var confirmPassword = document.getElementById("confirmPassword").value;
+        var errorSpan = document.getElementById("passwordMatchError");
+
+        if (password !== confirmPassword) {
+            errorSpan.style.display = "inline";
+        } else {
+            errorSpan.style.display = "none";
+        }
+    }
+
+    function submitForm(event) {
+        event.preventDefault();
+
+        var password = document.getElementById("password").value;
+        var confirmPassword = document.getElementById("confirmPassword").value;
+
+        if (password !== confirmPassword) {
+            document.getElementById("passwordMatchError").style.display = "inline";
+            return false;
+        }
+
+
+        var formData = {
+            username: document.getElementById("username").value,
+            password: document.getElementById("password").value,
+            role: "USER"
+        };
+
+
+        fetch('/api/users/register', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        })
+            .then(response => {
+                if (response.ok) {
+                    // Registration successful - redirect to login page
+                    window.location.href = '/login';
+                } else {
+                    // Registration failed - show error message
+                    document.getElementById("errorMessage").style.display = "block";
+                    console.error('Registration failed');
+                }
+                return response.json();
+            })
+            .catch(error => {
+                document.getElementById("errorMessage").style.display = "block";
+                console.error('Error:', error);
+            });
+
+        return false;
+    }
+</script>
 </body>
 </html>
