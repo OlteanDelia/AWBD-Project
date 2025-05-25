@@ -1,12 +1,11 @@
 package com.awbd.bookstore.services;
 
-import com.awbd.bookstore.exceptions.*;
+import com.awbd.bookstore.exceptions.user.*;
 import com.awbd.bookstore.models.Cart;
 import com.awbd.bookstore.models.User;
 import com.awbd.bookstore.models.Wishlist;
 import com.awbd.bookstore.repositories.CartRepository;
 import com.awbd.bookstore.repositories.UserRepository;
-import com.awbd.bookstore.repositories.WishlistRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -18,20 +17,19 @@ import java.util.Optional;
 @Service
 @Transactional
 public class UserService {
-    private final UserRepository userRepository;
-    private final CartRepository cartRepository;
+    private UserRepository userRepository;
+    private CartRepository cartRepository;
 
+    //pentru parola
+    private static final int MIN_PASSWORD_LENGTH = 8;
 
     public UserService(UserRepository userRepository, CartRepository cartRepository) {
         this.userRepository = userRepository;
         this.cartRepository = cartRepository;
     }
 
-    //pentru parola
-    private static final int MIN_PASSWORD_LENGTH = 8;
-
     private boolean isPasswordStrong(String password) {
-    return (password == null || password.length() < MIN_PASSWORD_LENGTH) ? false : true;
+        return (password == null || password.length() < MIN_PASSWORD_LENGTH) ? false : true;
     }
 
     private boolean isUsernameValid(String username) {
@@ -47,38 +45,32 @@ public class UserService {
 
     @Transactional
     public User create(User user) {
-
         if (userRepository.existsByUsername(user.getUsername())) {
-            throw new DuplicateUserException();
+            throw new DuplicateUserException("Username already exists");
         }
 
         if(!isUsernameValid(user.getUsername())){
-            throw new InvalidUsernameException();
+            throw new InvalidUsernameException("Username cannot be empty");
         }
 
         if (!isPasswordStrong(user.getPassword())) {
             throw new WeakPasswordException("Password must be at least 8 characters long");
         }
 
-
-
         if (user.getRole() == null || (user.getRole() != User.Role.ADMIN && user.getRole() != User.Role.USER)) {
-            throw new InvalidRoleException();
+            throw new InvalidRoleException("Role must be either ADMIN or USER");
         }
 
         if (user.getRole() == User.Role.ADMIN) {
             validateAdminCreation();
         }
 
-
         String encodedPassword = Base64.getEncoder()
                 .encodeToString(user.getPassword().getBytes());
         user.setPassword(encodedPassword);
 
         try {
-
             User savedUser = userRepository.save(user);
-
 
             Cart cart = new Cart();
             cart.setUser(savedUser);
@@ -89,9 +81,6 @@ public class UserService {
             wishlist.setUser(savedUser);
             wishlist.setBooks(new HashSet<>());
 
-
-
-
             savedUser.setCart(cart);
             return savedUser;
 
@@ -101,10 +90,9 @@ public class UserService {
     }
 
     //find user by id
-    public Optional<User> findById(Long id){
+    public Optional<User> findById(Long id) {
         return userRepository.findById(id);
     }
-
 
     public Optional<User> findByUsername(String username) {
         return userRepository.findByUsername(username);
@@ -116,7 +104,7 @@ public class UserService {
                     // Verifică dacă noul username există deja la alt user
                     if (!existingUser.getUsername().equals(updatedUser.getUsername()) &&
                             userRepository.existsByUsername(updatedUser.getUsername())) {
-                        throw new DuplicateUserException();
+                        throw new DuplicateUserException("Username already exists");
                     }
 
                     existingUser.setUsername(updatedUser.getUsername());
@@ -128,14 +116,13 @@ public class UserService {
                     }
                     return userRepository.save(existingUser);
                 })
-                .orElseThrow(() -> new UserNotFoundException());
+                .orElseThrow(() -> new UserNotFoundException("User with id " + id + " not found."));
     }
 
     public void delete(Long id) {
         if (!userRepository.existsById(id)) {
-            throw new UserNotFoundException();
+            throw new UserNotFoundException("User with id " + id + " not found.");
         }
         userRepository.deleteById(id);
     }
-
 }

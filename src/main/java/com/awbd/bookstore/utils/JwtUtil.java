@@ -4,6 +4,7 @@ import com.awbd.bookstore.models.User;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Component;
 
 import java.util.Date;
@@ -14,6 +15,10 @@ import java.util.Map;
 public class JwtUtil {
     private static String SECRET_KEY = "your-secret-key";
     private static long TOKEN_VALIDITY = 1000 * 60 * 60 * 10; // 10 hours
+    @Autowired
+    private TokenBlacklistService tokenBlacklistService;
+
+
 
     public String generateToken(String username, User.Role role) {
         Map<String, Object> claims = new HashMap<>();
@@ -52,6 +57,10 @@ public class JwtUtil {
         } catch (Exception e) {
             return false;
         }
+    }
+
+    public boolean isTokenBlacklisted(String token) {
+        return tokenBlacklistService.esteInvalid(token);
     }
 
     public String getUsernameFromToken(String token) {

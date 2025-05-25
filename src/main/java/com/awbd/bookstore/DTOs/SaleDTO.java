@@ -6,6 +6,7 @@ import lombok.NoArgsConstructor;
 import lombok.Setter;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.time.LocalDate;
 
 @Getter
 @Setter
@@ -15,13 +16,13 @@ public class SaleDTO {
     private Long id;
     private String saleCode;
     private Double discountPercentage;
-    private LocalDateTime startDate;
-    private LocalDateTime endDate;
+    private LocalDate startDate;
+    private LocalDate endDate;
     private String description;
     private Boolean isActive;
     private List<Long> categoryIds;
 
-    public SaleDTO(Double discountPercentage, LocalDateTime startDate, LocalDateTime endDate,
+    public SaleDTO(Double discountPercentage, LocalDate startDate, LocalDate endDate,
                    String description, Boolean isActive, List<Long> categoryIds) {
         this.discountPercentage = discountPercentage;
         this.startDate = startDate;
@@ -31,7 +32,7 @@ public class SaleDTO {
         this.categoryIds = categoryIds;
     }
 
-    public SaleDTO(Double discountPercentage, LocalDateTime startDate, LocalDateTime endDate) {
+    public SaleDTO(Double discountPercentage, LocalDate startDate, LocalDate endDate) {
         this.discountPercentage = discountPercentage;
         this.startDate = startDate;
         this.endDate = endDate;

@@ -2,23 +2,21 @@ package com.awbd.bookstore.controllers;
 
 import com.awbd.bookstore.DTOs.BookDTO;
 import com.awbd.bookstore.DTOs.CategoryDTO;
-import com.awbd.bookstore.DTOs.UserDTO;
 import com.awbd.bookstore.annotations.RequireAdmin;
 import com.awbd.bookstore.mappers.BookMapper;
 import com.awbd.bookstore.mappers.CategoryMapper;
 import com.awbd.bookstore.models.Book;
 import com.awbd.bookstore.models.Category;
-import com.awbd.bookstore.models.User;
 import com.awbd.bookstore.services.CategoryService;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.security.access.prepost.PreAuthorize;
 
 import jakarta.validation.Valid;
 
+import java.net.URI;
 import java.util.HashMap;
-
 import java.util.List;
 import java.util.Map;
 
@@ -29,12 +27,11 @@ import org.slf4j.LoggerFactory;
 @RequestMapping("/api/categories")
 public class CategoryController {
 
-    private final CategoryService categoryService;
-    private final CategoryMapper categoryMapper;
-    private final BookMapper bookMapper;
+    private CategoryService categoryService;
+    private CategoryMapper categoryMapper;
+    private BookMapper bookMapper;
     private static final Logger logger = LoggerFactory.getLogger(CategoryController.class);
 
-    @Autowired
     public CategoryController(CategoryService categoryService, CategoryMapper categoryMapper, BookMapper bookMapper) {
         this.categoryService = categoryService;
         this.categoryMapper = categoryMapper;
@@ -42,59 +39,61 @@ public class CategoryController {
     }
 
     @PostMapping
-    @RequireAdmin
-    public ResponseEntity<CategoryDTO> addCategory(@Valid @RequestBody CategoryDTO categoryDto) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Category> addCategory(
+            @RequestBody
+            @Valid
+            CategoryDTO categoryDto) {
         Category category = categoryMapper.toEntity(categoryDto);
-        Category savedcategory = categoryService.createCategory(category);
-        logger.info("Category created: {}", savedcategory);
+        Category savedCategory = categoryService.createCategory(category);
+        logger.info("Category created: {}", savedCategory);
 
-        return ResponseEntity.status(HttpStatus.CREATED)
-                .body(categoryMapper.toDto(savedcategory));
+        return ResponseEntity.created(URI.create("/api/categories/" + savedCategory.getId()))
+                .body(savedCategory);
     }
 
     // get all books from a category
-    @GetMapping("/{id}")
-    public ResponseEntity<List<BookDTO>> getBooksInCategory(@PathVariable Long id) {
+    @GetMapping("/{id}/books")
+    public List<BookDTO> getBooksInCategory(@PathVariable Long id) {
         List<Book> books = categoryService.getBooksInCategory(id);
-        if (books.isEmpty()) {
-            logger.warn("No books found in category with id: {}", id);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
-        }
-        return ResponseEntity.ok(bookMapper.toDtoList(books));
+        logger.info("Retrieved {} books from category with id: {}", books.size(), id);
+        return bookMapper.toDtoList(books);
     }
-
 
     @DeleteMapping("/{id}")
-    @RequireAdmin
-    public ResponseEntity<Map<String, String>> deleteCategory(@PathVariable Long id) {
-
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {
         categoryService.delete(id);
-        Map<String, String> response = new HashMap<>();
         logger.info("Category with id {} deleted", id);
-
-        return ResponseEntity.ok(response);
-
+        return ResponseEntity.noContent().build();
     }
 
-    @GetMapping("/all")
-    public ResponseEntity<List<Category>> getAllCategories(){
+    @GetMapping
+    public List<CategoryDTO> getAllCategories() {
         List<Category> categories = categoryService.getAllCategories();
-        return ResponseEntity.ok(categories);
-}
-
+        logger.info("Retrieved {} categories", categories.size());
+        return categoryMapper.toDtoList(categories);
+    }
 
     @PutMapping("/{id}")
-    @RequireAdmin
-    public ResponseEntity<CategoryDTO> updateCategory(@PathVariable String id, @RequestBody CategoryDTO categoryDto) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Category> updateCategory(
+            @PathVariable
+            Long id,
 
-        Long idLong = Long.parseLong(id);
-        Category updatedCategory = categoryService.update(idLong, categoryMapper.toEntity(categoryDto));
-        if (updatedCategory == null) {
-            logger.warn("Category with id {} not found", id);
-            return ResponseEntity.status(HttpStatus.NOT_FOUND).body(null);
+            @RequestBody
+            @Valid
+            CategoryDTO categoryDto) {
+
+        if (categoryDto.getId() != null && !id.equals(categoryDto.getId())) {
+            logger.warn("ID mismatch: path ID {} doesn't match body ID {}", id, categoryDto.getId());
+            throw new RuntimeException("Id from path does not match with id from request");
         }
-        logger.info("Category with id {} updated", id);
-        return ResponseEntity.ok(categoryMapper.toDto(updatedCategory));
-    }
 
+        Category category = categoryMapper.toEntity(categoryDto);
+        Category updatedCategory = categoryService.update(id, category);
+        logger.info("Category with id {} updated", id);
+
+        return ResponseEntity.ok(updatedCategory);
+    }
 }

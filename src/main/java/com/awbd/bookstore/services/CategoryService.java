@@ -1,37 +1,34 @@
 package com.awbd.bookstore.services;
 
 import com.awbd.bookstore.exceptions.*;
+import com.awbd.bookstore.exceptions.category.CategoryAlreadyExistsException;
+import com.awbd.bookstore.exceptions.category.CategoryNotFoundException;
+import com.awbd.bookstore.exceptions.category.DuplicateCategoryException;
 import com.awbd.bookstore.models.Book;
 import com.awbd.bookstore.models.Category;
-import com.awbd.bookstore.models.User;
 import com.awbd.bookstore.repositories.CategoryRepository;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
 
-import java.util.Base64;
 import java.util.List;
 
 @Service
 public class CategoryService {
-    private final CategoryRepository categoryRepository;
+    private CategoryRepository categoryRepository;
 
-    @Autowired
     public CategoryService(CategoryRepository categoryRepository) {
         this.categoryRepository = categoryRepository;
     }
 
     public Category createCategory(Category category) {
         if (categoryRepository.existsByName(category.getName())) {
-            throw new CategoryAlreadyExistsException();
+            throw new CategoryAlreadyExistsException("Category with name '" + category.getName() + "' already exists");
         }
         return categoryRepository.save(category);
     }
 
-
-
     public Category getCategoryById(Long id) {
         return categoryRepository.findById(id)
-                .orElseThrow(() -> new CategoryNotFoundException());
+                .orElseThrow(() -> new CategoryNotFoundException("Category with ID " + id + " not found"));
     }
 
     public List<Book> getBooksInCategory(Long categoryId) {
@@ -39,10 +36,9 @@ public class CategoryService {
         return category.getBooks();
     }
 
-
     public void delete(Long id) {
         if (!categoryRepository.existsById(id)) {
-            throw new CategoryNotFoundException();
+            throw new CategoryNotFoundException("Category with ID " + id + " not found");
         }
         categoryRepository.deleteById(id);
     }
@@ -53,21 +49,18 @@ public class CategoryService {
                     // Verifică dacă noua categorie există deja la alta cat
                     if (!existingCategory.getName().equals(updatedCategory.getName()) &&
                             categoryRepository.existsByName(updatedCategory.getName())) {
-                        throw new DuplicateCategoryException();
+                        throw new DuplicateCategoryException("Category with name '" + updatedCategory.getName() + "' already exists");
                     }
-
 
                     existingCategory.setName(updatedCategory.getName());
                     existingCategory.setDescription(updatedCategory.getDescription());
 
                     return categoryRepository.save(existingCategory);
                 })
-                .orElseThrow(() -> new CategoryNotFoundException());
+                .orElseThrow(() -> new CategoryNotFoundException("Category with ID " + id + " not found"));
     }
-
 
     public List<Category> getAllCategories() {
         return categoryRepository.findAll();
     }
-
 }

@@ -8,18 +8,19 @@ import com.awbd.bookstore.annotations.RequireAdmin;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import jakarta.validation.Valid;
+import java.net.URI;
 import java.util.List;
-import java.util.stream.Collectors;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-
+import org.springframework.security.access.prepost.PreAuthorize;
 
 @RestController
 @RequestMapping("/api/sales")
 public class SaleController {
 
-    private final SaleService saleService;
-    private final SaleMapper saleMapper;
+    private SaleService saleService;
+    private SaleMapper saleMapper;
     private static final Logger logger = LoggerFactory.getLogger(SaleController.class);
 
     public SaleController(SaleService saleService, SaleMapper saleMapper) {
@@ -28,50 +29,70 @@ public class SaleController {
     }
 
     @PostMapping
-    @RequireAdmin
-    public ResponseEntity<SaleDTO> createSale(@RequestBody SaleDTO saleDTO) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<SaleDTO> createSale(
+            @RequestBody
+            @Valid
+            SaleDTO saleDTO) {
         Sale sale = saleMapper.toEntity(saleDTO);
         Sale saved = saleService.create(sale, saleDTO.getCategoryIds());
+        saved = saleService.getByIdWithStatusCheck(saved.getId());
         logger.info("Created sale with ID: {}", saved.getId());
-        return ResponseEntity.ok(saleMapper.toDto(saved));
+
+        return ResponseEntity.created(URI.create("/api/sales/" + saved.getId()))
+                .body(saleMapper.toDto(saved));
     }
 
     @GetMapping("/{id}")
     public ResponseEntity<SaleDTO> getSaleById(@PathVariable Long id) {
         Sale sale = saleService.getById(id);
-        if (sale == null) {
-            logger.warn("Sale with ID {} not found", id);
-            return ResponseEntity.notFound().build();
-        }
+        sale = saleService.getByIdWithStatusCheck(sale.getId());
         logger.info("Retrieved sale with ID: {}", id);
         return ResponseEntity.ok(saleMapper.toDto(sale));
     }
 
     @GetMapping
-    public ResponseEntity<List<SaleDTO>> getAllSales() {
+    @PreAuthorize("hasRole('ADMIN')")
+    public List<SaleDTO> getAllSales() {
         List<Sale> sales = saleService.getAll();
-        List<SaleDTO> dtos = sales.stream()
-                .map(saleMapper::toDto)
-                .collect(Collectors.toList());
-        logger.info("Retrieved {} sales", dtos.size());
-        return ResponseEntity.ok(dtos);
+        sales = saleService.getAllWithStatusCheck(sales);
+        logger.info("Retrieved {} sales", sales.size());
+        return saleMapper.toDtoList(sales);
+    }
+
+    @GetMapping("/active")
+    public List<SaleDTO> getActiveSales() {
+        List<Sale> sales = saleService.getAllActiveSales();
+        sales = saleService.getAllWithStatusCheck(sales);
+        logger.info("Retrieved {} active sales", sales.size());
+        return saleMapper.toDtoList(sales);
     }
 
     @PutMapping("/{id}")
-    @RequireAdmin
-    public ResponseEntity<SaleDTO> updateSale(@PathVariable Long id, @RequestBody SaleDTO saleDTO) {
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<SaleDTO> updateSale(
+            @PathVariable
+            Long id,
+
+            @RequestBody
+            @Valid
+            SaleDTO saleDTO) {
+
+        if (saleDTO.getId() != null && !id.equals(saleDTO.getId())) {
+            logger.warn("ID mismatch: path ID {} doesn't match body ID {}", id, saleDTO.getId());
+            throw new RuntimeException("Id from path does not match with id from request");
+        }
+
         Sale sale = saleMapper.toEntity(saleDTO);
         Sale updated = saleService.update(id, sale, saleDTO.getCategoryIds());
-        if (updated == null) {
-            logger.warn("Sale with ID {} not found for update", id);
-            return ResponseEntity.notFound().build();
-        }
+
         logger.info("Updated sale with ID: {}", id);
+
         return ResponseEntity.ok(saleMapper.toDto(updated));
     }
 
     @DeleteMapping("/{id}")
-    @RequireAdmin
+    @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteSale(@PathVariable Long id) {
         saleService.delete(id);
         logger.info("Deleted sale with ID: {}", id);
