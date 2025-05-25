@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - Bookstore</title>
+</head>
+<body>
+<h1>Login</h1>
+
+<div id="errorMessage" style="color: red; display: none;">
+    Invalid username or password. Please try again.
+</div>
+
+<form id="loginForm" onsubmit="return submitForm(event)">
+    <div>
+        <label for="username">Username:</label>
+        <input type="text" id="username" name="username" required/>
+    </div>
+
+    <div>
+        <label for="password">Password:</label>
+        <input type="password" id="password" name="password" required/>
+    </div>
+
+    <div>
+        <button type="submit">Login</button>
+    </div>
+</form>
+
+<div>
+    <p>Don't have an account? <a th:href="@{/register}">Register</a></p>
+</div>
+
+<script>
+    function submitForm(event) {
+        event.preventDefault();
+
+        // Create the JSON payload
+        var formData = {
+            username: document.getElementById("username").value,
+            password: document.getElementById("password").value
+        };
+
+        // Send the AJAX request
+        fetch('/api/users/login', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(formData)
+        })
+            .then(response => {
+                if (response.ok) {
+                    return response.json().then(data => {
+                        // Store the token in localStorage for future API calls
+                        localStorage.setItem('authToken', data.token);
+                        // Redirect to welcome page or dashboard
+                        if (data.role === 'USER') {
+                            window.location.href = '/home';
+                        } //else {
+                        //     window.location.href = '/admin-home';
+                        // }
+                    });
+                } else {
+                    // Login failed - show error message
+                    document.getElementById("errorMessage").style.display = "block";
+                    console.error('Login failed');
+                }
+            })
+            .catch(error => {
+                document.getElementById("errorMessage").style.display = "block";
+                console.error('Error:', error);
+            });
+
+        return false;
+    }
+</script>
+</body>
+</html>

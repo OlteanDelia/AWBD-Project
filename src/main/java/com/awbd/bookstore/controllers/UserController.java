@@ -48,6 +48,7 @@ public class UserController {
     }
 
     @PostMapping("/register")
+
     public ResponseEntity<UserDTO> registerUser(
             @RequestBody
             @Valid
@@ -70,6 +71,7 @@ public class UserController {
 
         return ResponseEntity.created(URI.create("/api/users/" + createdUser.getId()))
                 .body(userMapper.toDto(createdUser));
+
     }
 
     @PostMapping("/login")

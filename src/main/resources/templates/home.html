@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <title>Category Books - Bookstore</title>
+</head>
+<body>
+<header>
+    <h1 id="category-title">Category Books</h1>
+    <nav>
+        <a href="/">Home</a>
+        <span id="username-display"></span>
+        <button id="logout-button" style="display: none;" onclick="logout()">Logout</button>
+        <a href="/login" id="login-link">Login</a>
+        <a href="/register" id="register-link">Register</a>
+    </nav>
+</header>
+
+<main>
+    <section>
+        <div id="loading-message">Loading books...</div>
+        <div id="error-message" style="color: red; display: none;">
+            Failed to load books. Please try again later.
+        </div>
+        <div id="no-books-message" style="display: none;">
+            No books available in this category.
+        </div>
+        <ul id="books-list"></ul>
+    </section>
+</main>
+
+<footer>
+    <p>&copy; 2025 Bookstore</p>
+</footer>
+
+<script>
+    // Get category ID from URL
+    function getCategoryId() {
+        const pathParts = window.location.pathname.split('/');
+        return pathParts[pathParts.length - 1];
+    }
+
+    // Check if user is logged in and load books
+    window.addEventListener('DOMContentLoaded', function() {
+        const token = localStorage.getItem('authToken');
+        if (token) {
+            document.getElementById('login-link').style.display = 'none';
+            document.getElementById('register-link').style.display = 'none';
+            document.getElementById('logout-button').style.display = 'inline';
+        } else {
+            document.getElementById('logout-button').style.display = 'none';
+        }
+
+        // Load books in this category
+        const categoryId = getCategoryId();
+        loadCategoryBooks(categoryId);
+    });
+
+    function loadCategoryBooks(categoryId) {
+        fetch(`/api/categories/${categoryId}`)
+            .then(response => {
+                if (!response.ok) {
+                    if (response.status === 404) {
+                        throw new Error('Category not found or has no books');
+                    }
+                    throw new Error('Failed to fetch books');
+                }
+                return response.json();
+            })
+            .then(books => {
+                displayBooks(books, categoryId);
+            })
+            .catch(error => {
+                console.error('Error loading books:', error);
+                document.getElementById('loading-message').style.display = 'none';
+
+                if (error.message === 'Category not found or has no books') {
+                    document.getElementById('no-books-message').style.display = 'block';
+                } else {
+                    document.getElementById('error-message').style.display = 'block';
+                }
+            });
+    }
+
+    function displayBooks(books, categoryId) {
+        const booksList = document.getElementById('books-list');
+        document.getElementById('loading-message').style.display = 'none';
+
+        // Also fetch the category information to display the name
+        fetch(`/api/categories/all`)
+            .then(response => response.json())
+            .then(categories => {
+                const category = categories.find(cat => cat.id == categoryId);
+                if (category) {
+                    document.getElementById('category-title').innerText = category.name;
+                    document.title = category.name + " - Bookstore";
+                }
+            });
+
+        if (!books || books.length === 0) {
+            document.getElementById('no-books-message').style.display = 'block';
+            return;
+        }
+
+        let html = '';
+        books.forEach(book => {
+            html += `
+                    <li>
+                        <h3>${book.title}</h3>
+                        <p><strong>Author:</strong> ${book.author}</p>
+                        <p><strong>Price:</strong> $${book.price.toFixed(2)}</p>
+                        <p>${book.description || 'No description available'}</p>
+                    </li>
+                `;
+        });
+
+        booksList.innerHTML = html;
+    }
+
+    function logout() {
+        // Call logout endpoint
+        fetch('/api/users/logout', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + localStorage.getItem('authToken')
+            }
+        })
+            .finally(() => {
+                // Remove token from localStorage
+                localStorage.removeItem('authToken');
+                // Redirect to home page
+                window.location.href = '/';
+            });
+    }
+</script>
+</body>
+</html>
