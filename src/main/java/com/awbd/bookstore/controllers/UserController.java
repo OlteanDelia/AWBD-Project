@@ -11,6 +11,7 @@ import com.awbd.bookstore.mappers.UserMapper;
 import com.awbd.bookstore.models.User;
 import com.awbd.bookstore.services.UserService;
 import com.awbd.bookstore.utils.JwtUtil;
+import com.awbd.bookstore.utils.TokenBlacklistService;
 import jakarta.servlet.http.HttpSession;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -38,6 +39,7 @@ public class UserController {
     private UserMapper userMapper;
     private JwtUtil jwtUtil;
     private static final Logger logger = LoggerFactory.getLogger(UserController.class);
+    private static final TokenBlacklistService tokenBlacklistService = new TokenBlacklistService();
 
     public UserController(UserService userService, UserMapper userMapper, JwtUtil jwtUtil) {
         this.userService = userService;
@@ -85,7 +87,7 @@ public class UserController {
                 logger.info("Token generated for user {}", user.getUsername());
 
                 Map<String, Object> response = new HashMap<>();
-                response.put("user", user);
+                response.put("user", userMapper.toDto(user));
                 response.put("token", token);
 
                 return ResponseEntity.ok(response);
@@ -97,16 +99,47 @@ public class UserController {
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<User> getUser(@PathVariable Long id) {
+    public ResponseEntity<UserDTO> getUser(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader) {
+        System.out.println("Authorization header: " + authHeader);
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            logger.error("Invalid authorization header");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String token = authHeader.substring(7);
+        String username = jwtUtil.getUsernameFromToken(token);
+        User.Role role = jwtUtil.getRoleFromToken(token);
+
+        if (username == null) {
+            logger.error("Invalid token");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        // un user poate vedea doar datele sale
+        if (role != User.Role.ADMIN) {
+            User authenticatedUser = userService.findByUsername(username)
+                    .orElseThrow(() -> new UserNotFoundException("Authenticated user not found"));
+
+
+            if (authenticatedUser.getId() != id) {
+                logger.warn("User {} attempted to access details of user with ID {}", username, id);
+                return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+            }
+        }
+
+        // adminul poate vedea datele oricui
         User user = userService.findById(id)
                 .orElseThrow(() -> new UserNotFoundException("User with ID " + id + " not found."));
 
         logger.info("Retrieved user with ID: {}", id);
-        return ResponseEntity.ok(user);
+        return ResponseEntity.ok(userMapper.toDto(user));
     }
 
     @PutMapping("/{id}")
-    public ResponseEntity<User> updateUser(
+    public ResponseEntity<UserDTO> updateUser(
             @PathVariable
             Long id,
 
@@ -123,7 +156,7 @@ public class UserController {
         User updatedUser = userService.update(id, user);
         logger.info("Updated user with ID {}", id);
 
-        return ResponseEntity.ok(updatedUser);
+        return ResponseEntity.ok(userMapper.toDto(updatedUser));
     }
 
     @DeleteMapping("/{id}")
@@ -131,13 +164,34 @@ public class UserController {
     public ResponseEntity<Void> deleteUser(@PathVariable Long id) {
         userService.delete(id);
         logger.info("User with ID {} was deleted", id);
-        return ResponseEntity.noContent().build();
+        return ResponseEntity.ok().build();
     }
 
     @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpSession session) {
-        session.invalidate();
-        logger.info("Logout successful");
+    public ResponseEntity<Void> logout(
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+
+        if (authHeader != null && authHeader.startsWith("Bearer ")) {
+
+            String token = authHeader.substring(7);
+
+            tokenBlacklistService.invalidateToken(token);
+            logger.info("Token invalidat cu succes");
+        }
+
+        logger.info("Logout realizat cu succes");
         return ResponseEntity.ok().build();
     }
+
+    @GetMapping("/debug/blacklist")
+    public ResponseEntity<Map<String, Object>> debugBlacklist() {
+        Map<String, Object> debug = new HashMap<>();
+        debug.put("blacklist", tokenBlacklistService.getBlacklist());
+        debug.put("contains_current_token", tokenBlacklistService.esteInvalid("token-de-test"));
+        return ResponseEntity.ok(debug);
+    }
+
 }
+
+
+

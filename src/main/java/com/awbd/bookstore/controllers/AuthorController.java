@@ -35,6 +35,7 @@ public class AuthorController {
             @RequestBody
             @Valid
             AuthorDTO authorDTO) {
+        logger.info("Creating new author: {}", authorDTO.getName());
         Author author = authorMapper.toEntity(authorDTO);
         Author createdAuthor = authorService.create(author);
         logger.info("Created new author: {}", authorDTO.getName());

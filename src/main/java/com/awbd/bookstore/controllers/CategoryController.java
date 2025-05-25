@@ -54,10 +54,10 @@ public class CategoryController {
 
     // get all books from a category
     @GetMapping("/{id}/books")
-    public List<Book> getBooksInCategory(@PathVariable Long id) {
+    public List<BookDTO> getBooksInCategory(@PathVariable Long id) {
         List<Book> books = categoryService.getBooksInCategory(id);
         logger.info("Retrieved {} books from category with id: {}", books.size(), id);
-        return books;
+        return bookMapper.toDtoList(books);
     }
 
     @DeleteMapping("/{id}")
@@ -69,10 +69,10 @@ public class CategoryController {
     }
 
     @GetMapping
-    public List<Category> getAllCategories() {
+    public List<CategoryDTO> getAllCategories() {
         List<Category> categories = categoryService.getAllCategories();
         logger.info("Retrieved {} categories", categories.size());
-        return categories;
+        return categoryMapper.toDtoList(categories);
     }
 
     @PutMapping("/{id}")

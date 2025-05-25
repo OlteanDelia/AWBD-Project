@@ -29,22 +29,22 @@ public class BookController {
     }
 
     @GetMapping
-    public List<Book> getAllBooks() {
+    public List<BookDTO> getAllBooks() {
         List<Book> books = bookService.getAllBooks();
         logger.info("Fetched all books");
-        return books;
+        return bookMapper.toDtoList(books);
     }
 
     @GetMapping("/search/{title}")
-    public List<Book> searchBooks(@PathVariable String title) {
+    public List<BookDTO> searchBooks(@PathVariable String title) {
         List<Book> books = bookService.searchByTitle(title);
         logger.info("Searched books with title: {}", title);
-        return books;
+        return bookMapper.toDtoList(books);
     }
 
     @PostMapping
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Book> addBook(
+    public ResponseEntity<BookDTO> addBook(
             @RequestBody
             @Valid
             BookDTO bookDto) {
@@ -52,13 +52,21 @@ public class BookController {
         Book savedBook = bookService.addBook(book);
         logger.info("Added new book: {}", bookDto.getTitle());
         return ResponseEntity.created(URI.create("/api/books/" + savedBook.getId()))
-                .body(savedBook);
+                .body(bookMapper.toDto(savedBook));
     }
 
     @GetMapping("/in-stock")
-    public List<Book> getInStockBooks() {
+    public List<BookDTO> getInStockBooks() {
         List<Book> books = bookService.getBooksInStock();
         logger.info("Fetched all books in stock");
-        return books;
+        return bookMapper.toDtoList(books);
+    }
+
+    @DeleteMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<Void> deleteBook(@PathVariable Long id) {
+        bookService.deleteBook(id);
+        logger.info("Deleted book with id: {}", id);
+        return ResponseEntity.noContent().build();
     }
 }
