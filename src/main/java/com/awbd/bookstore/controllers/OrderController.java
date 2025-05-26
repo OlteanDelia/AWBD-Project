@@ -1,13 +1,12 @@
 package com.awbd.bookstore.controllers;
 
+import com.awbd.bookstore.DTOs.OrderRequestDTO;
 import com.awbd.bookstore.DTOs.OrderDTO;
+import com.awbd.bookstore.DTOs.OrderRequestDTO;
 import com.awbd.bookstore.annotations.RequireAdmin;
 import com.awbd.bookstore.exceptions.user.UserNotFoundException;
 import com.awbd.bookstore.mappers.OrderMapper;
-import com.awbd.bookstore.models.Book;
-import com.awbd.bookstore.models.Cart;
-import com.awbd.bookstore.models.Order;
-import com.awbd.bookstore.models.User;
+import com.awbd.bookstore.models.*;
 import com.awbd.bookstore.services.CartService;
 import com.awbd.bookstore.services.OrderService;
 import com.awbd.bookstore.services.UserService;
@@ -48,7 +47,10 @@ public class OrderController {
 
 
     @PostMapping
-    public ResponseEntity<OrderDTO> createOrder(@RequestHeader("Authorization") String authHeader) {
+    public ResponseEntity<OrderDTO> createOrder(
+            @RequestHeader("Authorization") String authHeader,
+            @RequestBody(required = false) OrderRequestDTO request) {
+
         if (!authHeader.startsWith("Bearer ")) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -58,26 +60,24 @@ public class OrderController {
         User user = userService.findByUsername(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found: " + username));
 
-
         Cart cart = cartService.getCartByUserId(user.getId());
         if (cart.getBooks().isEmpty()) {
             throw new IllegalStateException("Cart is empty");
         }
 
-
         List<Long> bookIds = cart.getBooks().stream()
                 .map(Book::getId)
                 .collect(Collectors.toList());
 
-        Order order = orderService.createOrder(user.getId(), bookIds);
 
+        Long saleId = (request != null) ? request.getSaleId() : null;
+        Order order = orderService.createOrder(user.getId(), bookIds, saleId);
 
         cartService.clearCart(cart.getId());
         logger.info("Order created successfully for user: {}", username);
 
         return ResponseEntity.ok(orderMapper.toDto(order));
     }
-
     @GetMapping("/history")
     public ResponseEntity<List<OrderDTO>> getUserOrderHistory(
             @RequestHeader("Authorization") String authHeader) {

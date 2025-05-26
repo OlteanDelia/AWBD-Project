@@ -15,8 +15,6 @@ public class Review {
     @Column(nullable = false)
     private int rating;
 
-    @Column(name = "created_at", nullable = false)
-    private String createdAt;
 
     @ManyToOne
     @JoinColumn(name = "user_id", nullable = false)
@@ -32,7 +30,6 @@ public class Review {
     public Review(String content,User user, Book book) {
         this.content = content;
 
-        this.createdAt = java.time.LocalDate.now().toString();
         this.user = user;
         this.book = book;
     }
@@ -61,13 +58,6 @@ public class Review {
         this.rating = rating;
     }
 
-    public String getCreatedAt() {
-        return createdAt;
-    }
-
-    public void setCreatedAt(String createdAt) {
-        this.createdAt = createdAt;
-    }
 
     public User getUser() {
         return user;

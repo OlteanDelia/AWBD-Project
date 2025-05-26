@@ -73,4 +73,9 @@ public class WishlistService {
         return wishlistRepository.findById(wishlistId)
                 .orElseThrow(() -> new WishlistNotFoundException("Wishlist with ID " + wishlistId + " not found"));
     }
+
+    public Wishlist getWishlistByUserId(Long userId) {
+        return wishlistRepository.findByUserId(userId)
+                .orElseThrow(() -> new WishlistNotFoundException("Wishlist for user with ID " + userId + " not found"));
+    }
 }

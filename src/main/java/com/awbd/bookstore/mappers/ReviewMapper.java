@@ -29,7 +29,7 @@ public class ReviewMapper {
         dto.setId(review.getId());
         dto.setContent(review.getContent());
         dto.setRating(review.getRating());
-        dto.setCreatedAt(review.getCreatedAt());
+
 
         if (review.getUser() != null) {
             dto.setUserId(review.getUser().getId());
@@ -46,7 +46,7 @@ public class ReviewMapper {
         Review review = new Review();
         review.setContent(dto.getContent());
         review.setRating(dto.getRating());
-        review.setCreatedAt(dto.getCreatedAt());
+
 
         if (dto.getUserId() != null) {
             User user = userRepository.findById(dto.getUserId())
@@ -72,7 +72,7 @@ public class ReviewMapper {
     public void updateEntityFromDto(ReviewDTO dto, Review review) {
         review.setContent(dto.getContent());
         review.setRating(dto.getRating());
-        review.setCreatedAt(dto.getCreatedAt());
+
 
         if (dto.getUserId() != null) {
             User user = userRepository.findById(dto.getUserId())

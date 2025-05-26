@@ -30,7 +30,8 @@ public class OrderService {
         this.saleService = saleService;
     }
 
-    public Order createOrder(Long userId, List<Long> bookIds) {
+
+    public Order createOrder(Long userId, List<Long> bookIds, Long saleId) {
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found"));
 
@@ -45,6 +46,40 @@ public class OrderService {
                     .orElseThrow(() -> new BookNotFoundException("Book with ID " + bookId + " not found"));
             order.addBook(book);
         });
+
+        if (saleId != null) {
+            Sale sale = saleService.getById(saleId);
+            if (sale == null) {
+                throw new SaleNotFoundException("Sale with ID " + saleId + " not found");
+            }
+            order.setSale(sale);
+        }
+
+        double totalPrice = 0.0;
+        // calculate price
+        if (saleId == null){
+            totalPrice = order.getBooks().stream()
+                    .mapToDouble(Book::getPrice)
+                    .sum();
+            order.setTotalPrice(totalPrice);
+        } else {
+            Sale sale = saleService.getById(saleId);
+
+            double percentage = sale.getDiscountPercentage();
+            List<Category> saleCategories = sale.getCategories();
+
+            for (Book book : order.getBooks()) {
+                if (saleCategories.contains(book.getCategory())) {
+                    totalPrice += book.getPrice() * (1 - percentage / 100);
+                } else {
+                    totalPrice += book.getPrice();
+                }
+            }
+        }
+
+        order.setTotalPrice(totalPrice);
+
+
 
         return orderRepository.save(order);
     }
@@ -92,46 +127,5 @@ public class OrderService {
         return orderRepository.save(order);
     }
 
-    public void applySaleToOrder(Long orderId, Long saleId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order with ID " + orderId + " not found"));
 
-        Sale sale = saleService.getById(saleId);
-        if (sale == null) {
-            throw new SaleNotFoundException("Sale with ID " + saleId + " not found");
-        }
-
-        order.setSale(sale);
-        orderRepository.save(order);
-    }
-
-    // calculate total price, considering the sales, if they exist
-    public void getTotalPrice(Long orderId) {
-        Order order = orderRepository.findById(orderId)
-                .orElseThrow(() -> new OrderNotFoundException("Order with ID " + orderId + " not found"));
-
-        Sale sale = order.getSale();
-        double totalPrice = 0.0;
-
-        if (sale != null) {
-            double percentage = sale.getDiscountPercentage();
-            List<Category> sale_categ = sale.getCategories();
-
-            for (Book book : order.getBooks()) {
-                if (sale_categ.contains(book.getCategory())) {
-                    totalPrice += book.getPrice() * (1 - percentage / 100);
-                } else {
-                    totalPrice += book.getPrice();
-                }
-            }
-        } else {
-            // Calculate total without discount
-            for (Book book : order.getBooks()) {
-                totalPrice += book.getPrice();
-            }
-        }
-
-        order.setTotalPrice(totalPrice);
-        orderRepository.save(order);
-    }
 }

@@ -37,7 +37,7 @@ public class ReviewController {
     }
 
     @PostMapping("/book/{bookId}")
-    public ResponseEntity<Review> createReview(
+    public ResponseEntity<ReviewDTO> createReview(
             @PathVariable Long bookId,
             @RequestBody @Valid ReviewDTO reviewDTO,
             @RequestHeader("Authorization") String authHeader) {
@@ -64,14 +64,14 @@ public class ReviewController {
         logger.info("Created review for book ID: {} by user: {}", bookId, username);
 
         return ResponseEntity.created(URI.create("/api/reviews/" + savedReview.getId()))
-                .body(savedReview);
+                .body(reviewMapper.toDto(savedReview));
     }
 
     @GetMapping("/book/{bookId}")
-    public List<Review> getReviewsByBookId(@PathVariable Long bookId) {
+    public List<ReviewDTO> getReviewsByBookId(@PathVariable Long bookId) {
         List<Review> reviews = reviewService.getReviewsByBookId(bookId);
         logger.info("Fetched {} reviews for book ID: {}", reviews.size(), bookId);
-        return reviews;
+        return reviewMapper.toDtoList(reviews);
     }
 
     @DeleteMapping("/{id}")
