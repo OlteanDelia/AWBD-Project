@@ -6,6 +6,7 @@ import com.awbd.bookstore.models.User;
 import com.awbd.bookstore.models.Wishlist;
 import com.awbd.bookstore.repositories.CartRepository;
 import com.awbd.bookstore.repositories.UserRepository;
+import com.awbd.bookstore.repositories.WishlistRepository;
 import jakarta.transaction.Transactional;
 import org.springframework.dao.DataIntegrityViolationException;
 import org.springframework.stereotype.Service;
@@ -19,13 +20,15 @@ import java.util.Optional;
 public class UserService {
     private UserRepository userRepository;
     private CartRepository cartRepository;
+    private WishlistRepository wishlistRepository;
 
     //pentru parola
     private static final int MIN_PASSWORD_LENGTH = 8;
 
-    public UserService(UserRepository userRepository, CartRepository cartRepository) {
+    public UserService(UserRepository userRepository, CartRepository cartRepository, WishlistRepository wishlistRepository) {
         this.userRepository = userRepository;
         this.cartRepository = cartRepository;
+        this.wishlistRepository = wishlistRepository;
     }
 
     private boolean isPasswordStrong(String password) {
@@ -80,8 +83,10 @@ public class UserService {
             Wishlist wishlist = new Wishlist();
             wishlist.setUser(savedUser);
             wishlist.setBooks(new HashSet<>());
+            wishlistRepository.save(wishlist);
 
             savedUser.setCart(cart);
+            savedUser.setWishlist(wishlist);
             return savedUser;
 
         } catch (DataIntegrityViolationException e) {
