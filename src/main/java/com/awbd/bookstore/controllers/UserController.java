@@ -183,13 +183,6 @@ public class UserController {
         return ResponseEntity.ok().build();
     }
 
-    @GetMapping("/debug/blacklist")
-    public ResponseEntity<Map<String, Object>> debugBlacklist() {
-        Map<String, Object> debug = new HashMap<>();
-        debug.put("blacklist", tokenBlacklistService.getBlacklist());
-        debug.put("contains_current_token", tokenBlacklistService.esteInvalid("token-de-test"));
-        return ResponseEntity.ok(debug);
-    }
 
 }
 
