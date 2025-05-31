@@ -26,4 +26,8 @@ public class BookDTO {
         this.categoryId = categoryId;
         this.authorId = authorId;
     }
+
+    public void setAuthor(String author) {
+        this.authorId = Long.parseLong(author);
+    }
 }

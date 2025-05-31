@@ -59,4 +59,10 @@ public class Order {
     }
 
 
+    public void setUserId(long l) {
+        if (this.user == null) {
+            this.user = new User();
+        }
+        this.user.setId(l);
+    }
 }
