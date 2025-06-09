@@ -1,5 +1,6 @@
 package com.awbd.bookstore.services;
 
+import com.awbd.bookstore.DTOs.CategoryDTO;
 import com.awbd.bookstore.exceptions.*;
 import com.awbd.bookstore.exceptions.category.CategoryAlreadyExistsException;
 import com.awbd.bookstore.exceptions.category.CategoryNotFoundException;
@@ -60,7 +61,16 @@ public class CategoryService {
                 .orElseThrow(() -> new CategoryNotFoundException("Category with ID " + id + " not found"));
     }
 
-    public List<Category> getAllCategories() {
-        return categoryRepository.findAll();
+
+    public List<CategoryDTO> getAllCategories() {
+        return categoryRepository.findAll().stream()
+                .map(category -> new CategoryDTO(
+                        category.getId(),
+                        category.getName(),
+                        category.getDescription()
+                        // bookIds and saleIds will remain null or empty
+                ))
+                .toList();
     }
+
 }

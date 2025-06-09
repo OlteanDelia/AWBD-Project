@@ -69,7 +69,7 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order with ID " + orderId + " not found"));
 
-        // Optional: update user
+
         if (userId != null && !userId.equals(order.getUser().getId())) {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found"));
@@ -80,6 +80,7 @@ public class OrderService {
         if (bookIds == null || bookIds.isEmpty()) {
             throw new EmptyCartException("Book IDs cannot be empty");
         }
+
 
         Set<Book> books = new HashSet<>();
         for (Long bookId : bookIds) {
@@ -134,4 +135,9 @@ public class OrderService {
         order.setTotalPrice(totalPrice);
         orderRepository.save(order);
     }
+
+
+
+
+
 }

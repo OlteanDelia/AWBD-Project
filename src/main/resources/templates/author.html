@@ -1,0 +1,611 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Author Details - Bookstore</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        header {
+            background-color: #333;
+            color: white;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            margin: 0;
+        }
+
+        nav {
+            margin-top: 1rem;
+        }
+
+        nav a, nav button {
+            color: white;
+            text-decoration: none;
+            margin-right: 1rem;
+            padding: 0.5rem 1rem;
+            background: none;
+            border: 1px solid white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        nav a:hover, nav button:hover {
+            background-color: white;
+            color: #333;
+        }
+
+        main {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #loading-message {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #666;
+        }
+
+        #error-message {
+            text-align: center;
+            color: red;
+            font-size: 1.1rem;
+            margin: 1rem 0;
+        }
+
+        .author-details {
+            display: none;
+        }
+
+        .author-header {
+            margin-bottom: 2rem;
+        }
+
+        .author-name {
+            font-size: 2rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 1rem;
+        }
+
+        .author-bio {
+            font-size: 1rem;
+            line-height: 1.6;
+            color: #666;
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+
+        .books-section {
+            margin-top: 3rem;
+        }
+
+        .section-title {
+            font-size: 1.8rem;
+            color: #333;
+            margin-bottom: 1.5rem;
+            border-bottom: 2px solid #007bff;
+            padding-bottom: 0.5rem;
+        }
+
+        #books-list {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 2rem;
+            list-style: none;
+            padding: 0;
+        }
+
+        #books-list li {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1.5rem;
+            transition: all 0.3s;
+            height: fit-content;
+        }
+
+        #books-list li:hover {
+            background-color: #e9e9e9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .book-title {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 0.5rem;
+            line-height: 1.3;
+        }
+
+        .book-price {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: green;
+            margin-bottom: 1rem;
+        }
+
+
+        .book-stock {
+            color: #28a745;
+            font-weight: bold;
+            margin-bottom: 0.5rem;
+        }
+
+        .book-stock.out-of-stock {
+            color: #dc3545;
+        }
+
+        .book-actions {
+            display: flex;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .btn {
+            padding: 0.5rem 1rem;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            transition: background-color 0.3s;
+            flex: 1;
+        }
+
+        .btn-primary {
+            background-color: #007bff;
+            color: white;
+        }
+
+        .btn-primary:hover {
+            background-color: #0056b3;
+        }
+
+        .btn-primary:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        .btn-secondary {
+            background-color: #6c757d;
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            background-color: #545b62;
+        }
+
+        .btn-success {
+            background-color: #28a745;
+            color: white;
+        }
+
+        .btn-success:hover {
+            background-color: #218838;
+        }
+
+        .btn-warning {
+            background-color: #ffc107;
+            color: #212529;
+        }
+
+        .btn-warning:hover {
+            background-color: #e0a800;
+        }
+
+        .no-books-message {
+            text-align: center;
+            color: #666;
+            font-size: 1.1rem;
+            margin: 2rem 0;
+            padding: 2rem;
+            background-color: #f8f9fa;
+            border-radius: 8px;
+        }
+
+        @media (max-width: 768px) {
+            .author-name {
+                font-size: 1.5rem;
+            }
+
+            #books-list {
+                grid-template-columns: 1fr;
+            }
+
+            .book-actions {
+                flex-direction: column;
+            }
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #666;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1 id="page-title">Author Details</h1>
+    <nav>
+        <button id="logout-button" style="display: none;" onclick="logout()">Logout</button>
+        <a href="/login" id="login-link">Login</a>
+        <a href="/register" id="register-link">Register</a>
+        <a href="/home">Home</a>
+        <a>Profile</a>
+        <a>Cart</a>
+        <a>Wishlist</a>
+        <a>Order History</a>
+    </nav>
+</header>
+
+<main>
+
+    <div id="loading-message">Loading author details...</div>
+    <div id="error-message" style="display: none;">
+        Failed to load author details. Please try again later.
+    </div>
+
+    <div class="author-details" id="author-details">
+        <div class="author-header">
+            <div class="author-name" id="author-name"></div>
+            <div class="author-bio" id="author-bio"></div>
+        </div>
+
+        <div class="books-section">
+            <h2 class="section-title">Books by this Author</h2>
+            <ul id="books-list"></ul>
+            <div class="no-books-message" id="no-books-message" style="display: none;">
+                No books available by this author.
+            </div>
+        </div>
+    </div>
+</main>
+
+<footer>
+    <p>&copy; 2024 Bookstore. All rights reserved.</p>
+</footer>
+
+<script>
+    let authorData = null;
+    let booksData = [];
+    let cartItems = {};
+    let wishlistItems = {};
+    let userWishlistId = null;
+
+    function getAuthorId() {
+        const urlParams = new URLSearchParams(window.location.search);
+        return urlParams.get('id') || urlParams.get('authorId');
+    }
+
+    window.addEventListener('DOMContentLoaded', function () {
+        if (!checkAuthStatus()) {
+            return;
+        }
+
+        const authorId = getAuthorId();
+        if (!authorId) {
+            document.getElementById('loading-message').style.display = 'none';
+            document.getElementById('error-message').textContent = 'No author ID provided';
+            document.getElementById('error-message').style.display = 'block';
+            return;
+        }
+
+        loadUserCartAndWishlist().then(() => {
+            loadAuthorDetails(authorId);
+            loadAuthorBooks(authorId);
+        });
+    });
+
+    function checkAuthStatus() {
+        const token = getAuthToken();
+
+        if (!token) {
+            alert('Please log in to access this page.');
+            window.location.href = '/login';
+            return false;
+        }
+
+        document.getElementById('login-link').style.display = 'none';
+        document.getElementById('register-link').style.display = 'none';
+        document.getElementById('logout-button').style.display = 'inline';
+
+        return true;
+    }
+
+    function getAuthToken() {
+        return window.authToken || (typeof localStorage !== 'undefined' ? localStorage.getItem('authToken') : null) || 'simulated-auth-token-12345';
+    }
+
+    function setAuthToken(token) {
+        window.authToken = token;
+        if (typeof localStorage !== 'undefined') {
+            localStorage.setItem('authToken', token);
+        }
+    }
+
+    function removeAuthToken() {
+        window.authToken = null;
+        if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem('authToken');
+        }
+    }
+
+    function loadUserCartAndWishlist() {
+        const token = getAuthToken();
+
+        return fetch('/api/cart', {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                if (!response.ok) {
+                    throw new Error('Failed to fetch cart');
+                }
+                return response.json();
+            })
+            .then(cart => {
+                if (cart && cart.bookIds) {
+                    cartItems = {};
+                    cart.bookIds.forEach(bookId => {
+                        cartItems[bookId] = true;
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading cart:', error.message);
+            })
+            .finally(() => {
+
+                loadWishlistItems();
+            });
+    }
+
+    function loadWishlistItems() {
+        const token = getAuthToken();
+        const wishlistId = 1;
+
+        return fetch(`/api/wishlists/${wishlistId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to load wishlist');
+                return response.json();
+            })
+            .then(wishlistBooks => {
+                wishlistItems = {};
+                if (Array.isArray(wishlistBooks)) {
+                    wishlistBooks.forEach(book => {
+                        wishlistItems[book.id] = true;
+                    });
+                }
+            })
+            .catch(error => {
+                console.error('Error loading wishlist:', error.message);
+            });
+    }
+
+
+    function loadAuthorDetails(authorId) {
+        const token = getAuthToken();
+
+        fetch(`/api/authors/${authorId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                if (response.status === 401 || response.status === 403) {
+                    alert('Your session has expired. Please log in again.');
+                    removeAuthToken();
+                    window.location.href = '/login';
+                    return;
+                }
+                if (!response.ok) {
+                    throw new Error(`Failed to fetch author details: ${response.status} ${response.statusText}`);
+                }
+                return response.json();
+            })
+            .then(author => {
+                if (!author) return;
+                authorData = author;
+                displayAuthorDetails(author);
+            })
+            .catch(error => {
+                document.getElementById('loading-message').style.display = 'none';
+                document.getElementById('error-message').textContent = error.message;
+                document.getElementById('error-message').style.display = 'block';
+            });
+    }
+
+    function loadAuthorBooks(authorId) {
+        const token = getAuthToken();
+
+        fetch(`/api/books/byauthor/${authorId}`, {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                if (response.status === 401 || response.status === 403) {
+                    alert('Your session has expired. Please log in again.');
+                    removeAuthToken();
+                    window.location.href = '/login';
+                    return;
+                }
+                return response.json();
+            })
+            .then(books => {
+                booksData = Array.isArray(books) ? books : [];
+                displayAuthorBooks(booksData);
+            })
+            .catch(() => {
+                displayAuthorBooks([]);
+            });
+    }
+
+    function displayAuthorDetails(author) {
+        document.getElementById('loading-message').style.display = 'none';
+        document.getElementById('author-details').style.display = 'block';
+
+        document.getElementById('page-title').textContent = author.name || 'Author Details';
+        document.title = `${author.name || 'Author'} - Author Details - Bookstore`;
+
+        document.getElementById('author-name').textContent = author.name || 'Unknown Author';
+        document.getElementById('author-bio').textContent = author.biography || author.bio || 'No biography available for this author.';
+    }
+
+    function displayAuthorBooks(books) {
+        const booksList = document.getElementById('books-list');
+        const noBooksMessage = document.getElementById('no-books-message');
+
+        if (!books || books.length === 0) {
+            noBooksMessage.style.display = 'block';
+            return;
+        }
+
+        noBooksMessage.style.display = 'none';
+        booksList.innerHTML = '';
+
+        books.forEach(book => {
+            const isInStock = book.stock > 0;
+            const isInCart = cartItems[book.id];
+            const isInWishlist = wishlistItems[book.id];
+
+            const listItem = document.createElement('li');
+            listItem.innerHTML = `
+                <div class="book-title">${book.title || 'Untitled'}</div>
+                <div class="book-price">$${book.price ? book.price.toFixed(2) : '0.00'}</div>
+                <div class="${isInStock ? 'book-stock' : 'book-stock out-of-stock'}">
+                    ${isInStock ? `In Stock (${book.stock})` : 'Out of Stock'}
+                </div>
+
+                <div class="book-actions">
+                    <button class="${isInCart ? 'btn btn-success' : 'btn btn-primary'}"
+                            onclick="addToCart(${book.id})"
+                            ${(!isInStock || isInCart) ? 'disabled' : ''}>
+                        ${isInCart ? 'Already in Cart' : 'Add to Cart'}
+                    </button>
+                    <button class="${isInWishlist ? 'btn btn-warning' : 'btn btn-secondary'}"
+                            onclick="addToWishlist(${book.id})"
+        ${isInWishlist ? 'disabled' : ''}>
+                        ${isInWishlist ? 'In Wishlist' : 'Add to Wishlist'}
+                    </button>
+                </div>
+            `;
+            booksList.appendChild(listItem);
+        });
+    }
+
+    function addToCart(bookId) {
+        const token = getAuthToken();
+
+        if (!token) {
+            alert('Please log in to add books to cart.');
+            return;
+        }
+
+        if (cartItems[bookId]) {
+            alert('This book is already in your cart!');
+            return;
+        }
+
+        const button = event.target;
+        button.disabled = true;
+        button.textContent = 'Adding...';
+
+        fetch(`/api/cart/${bookId}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                if (response.status === 401 || response.status === 403) {
+                    alert('Your session has expired. Please log in again.');
+                    removeAuthToken();
+                    window.location.href = '/login';
+                    return;
+                }
+                if (!response.ok) throw new Error('Failed to add to cart');
+
+                cartItems[bookId] = true;
+                button.classList.remove('btn-primary');
+                button.classList.add('btn-success');
+                button.textContent = 'Already in Cart';
+            })
+            .catch(error => {
+                alert('Error adding to cart: ' + error.message);
+                button.disabled = false;
+                button.textContent = 'Add to Cart';
+            });
+    }
+
+    function addToWishlist(bookId) {
+        const token = getAuthToken();
+        const wishlistId = 1;
+        if (!token) {
+            alert('Please log in to add books to wishlist.');
+            return;
+        }
+
+        const button = event.target;
+        button.disabled = true;
+        button.textContent = 'Adding...';
+
+        fetch(`/api/wishlists/${wishlistId}/${bookId}`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ bookId: bookId })
+        })
+            .then(response => {
+                if (!response.ok) throw new Error('Failed to add to wishlist');
+                wishlistItems[bookId] = true;
+                button.classList.remove('btn-secondary');
+                button.classList.add('btn-warning');
+                button.textContent = 'In Wishlist';
+            })
+            .catch(error => {
+                alert('Error adding to wishlist: ' + error.message);
+                button.disabled = false;
+                button.textContent = 'Add to Wishlist';
+            });
+    }
+
+
+    function logout() {
+        removeAuthToken();
+        window.location.href = '/login';
+    }
+</script>
+</body>
+</html>

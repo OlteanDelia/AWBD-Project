@@ -37,6 +37,35 @@ public class CartController {
         this.bookMapper = bookMapper;
     }
 
+    private Long extractUserId(String authHeader) {
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            throw new IllegalArgumentException("Invalid Authorization header.");
+        }
+        String token = authHeader.substring(7);
+        String username = jwtUtil.getUsernameFromToken(token);
+        if (username == null) {
+            throw new IllegalArgumentException("Invalid token.");
+        }
+        return userService.findByUsername(username)
+                .orElseThrow(UserNotFoundException::new)
+                .getId();
+    }
+
+
+    @GetMapping
+    public ResponseEntity<CartDTO> getCart(@RequestHeader("Authorization") String authHeader) {
+        try {
+            Long userId = extractUserId(authHeader);
+            Cart cart = cartService.getCartByUserId(userId);
+            if (cart == null) {
+                cart = cartService.createCart(userId);
+            }
+            return ResponseEntity.ok(cartMapper.toDto(cart));
+        } catch (Exception e) {
+            logger.error("Error fetching cart: {}", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+    }
     @PostMapping("/{bookId}")
     public ResponseEntity<CartDTO> addBookToCart(
             @PathVariable Long bookId,

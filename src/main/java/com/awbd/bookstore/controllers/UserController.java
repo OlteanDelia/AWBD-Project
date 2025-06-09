@@ -140,6 +140,7 @@ public class UserController {
         return ResponseEntity.ok(userMapper.toDto(user));
     }
 
+
     @PutMapping("/{id}")
     public ResponseEntity<UserDTO> updateUser(
             @PathVariable

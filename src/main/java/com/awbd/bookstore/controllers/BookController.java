@@ -62,6 +62,21 @@ public class BookController {
         return bookMapper.toDtoList(books);
     }
 
+    @GetMapping("/category/{categoryId}")
+    public ResponseEntity<List<BookDTO>> getBooksByCategory(@PathVariable Long categoryId) {
+        List<Book> books = bookService.getBookBycategoryId(categoryId);
+        logger.info("Fetched books by category ID: {}", categoryId);
+        return ResponseEntity.ok(bookMapper.toDtoList(books));
+    }
+
+    @GetMapping("/byauthor/{authorId}")
+    public List<BookDTO> getBooksByAuthorId(@PathVariable Long authorId) {
+        return bookService.getBooksByAuthorId(authorId);
+    }
+
+
+
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteBook(@PathVariable Long id) {

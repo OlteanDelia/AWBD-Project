@@ -60,6 +60,7 @@ public class CategoryController {
         return bookMapper.toDtoList(books);
     }
 
+
     @DeleteMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> deleteCategory(@PathVariable Long id) {

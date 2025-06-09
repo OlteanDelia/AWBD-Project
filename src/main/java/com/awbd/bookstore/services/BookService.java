@@ -1,10 +1,12 @@
 package com.awbd.bookstore.services;
 
+import com.awbd.bookstore.DTOs.BookDTO;
 import com.awbd.bookstore.models.Book;
 import com.awbd.bookstore.repositories.BookRepository;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
+import java.util.stream.Collectors;
 
 @Service
 public class BookService {
@@ -37,6 +39,23 @@ public class BookService {
     public List<Book> getBookBycategoryId(Long CategoryId) {
         return bookRepository.findByCategoryId(CategoryId);
     }
+
+    public List<BookDTO> getBooksByAuthorId(Long authorId) {
+        List<Book> books = bookRepository.findByAuthor_Id(authorId);
+        return books.stream()
+                .map(book -> new BookDTO(
+                        book.getId(),
+                        book.getTitle(),
+                        book.getPrice(),
+                        book.getStock(),
+                        book.getCategory().getId(),
+                        book.getAuthor().getId(),
+                        book.getAuthor().getName()
+                ))
+                .collect(Collectors.toList());
+    }
+
+
 
     public void deleteBook(Long bookId) {
         bookRepository.deleteById(bookId);

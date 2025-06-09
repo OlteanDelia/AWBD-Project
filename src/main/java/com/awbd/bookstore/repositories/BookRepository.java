@@ -40,6 +40,9 @@ public interface BookRepository extends JpaRepository<Book, Long> {
     // filtru dupa pret
     List<Book> findByPriceLessThan(double maxPrice);
     List<Book> findByPriceBetween(double minPrice, double maxPrice);
+    List<Book> findByAuthor_Id(Long authorId);
+
+
 
     List<Book> findByStockGreaterThan(int stock);
 
