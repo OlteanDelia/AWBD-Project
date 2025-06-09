@@ -60,7 +60,8 @@ public class OrderController {
         User user = userService.findByUsername(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found: " + username));
 
-        Cart cart = cartService.getCartByUserId(user.getId());
+        Cart cart = cartService.getCartByUserId(user.getId())
+                .orElseThrow(() -> new RuntimeException("Cart not found for user: " + user.getId()));
         if (cart.getBooks().isEmpty()) {
             throw new IllegalStateException("Cart is empty");
         }

@@ -11,12 +11,15 @@ import org.springframework.stereotype.Repository;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Repository
 public interface CartRepository extends JpaRepository<Cart, Long> {
-    Cart findByUserId(Long userId);
+    @Query("SELECT c FROM Cart c WHERE c.user.id = :userId")
+    Optional<Cart> findByUserId(@Param("userId") Long userId);
 
-    boolean existsByUserId(Long userId);
+    @Query("SELECT CASE WHEN COUNT(c) > 0 THEN true ELSE false END FROM Cart c WHERE c.user.id = :userId")
+    boolean existsByUserId(@Param("userId") Long userId);
 
 
     @Query("SELECT CASE WHEN COUNT(b) > 0 THEN true ELSE false END FROM Cart c JOIN c.books b WHERE c.id = :cartId AND b.id = :bookId")

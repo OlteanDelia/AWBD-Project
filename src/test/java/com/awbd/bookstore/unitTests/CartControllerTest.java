@@ -91,7 +91,7 @@ class CartControllerTest {
     void addBookToCart_Success() {
         when(jwtUtil.getUsernameFromToken(token)).thenReturn("testuser");
         when(userService.findByUsername("testuser")).thenReturn(Optional.of(user));
-        when(cartService.getCartByUserId(1L)).thenReturn(cart);
+        when(cartService.getCartByUserId(1L)).thenReturn(Optional.ofNullable(cart));
         doNothing().when(cartService).addBookToCart(1L, 1L);
         when(cartMapper.toDto(cart)).thenReturn(cartDTO);
 
@@ -113,7 +113,7 @@ class CartControllerTest {
 
         when(jwtUtil.getUsernameFromToken(token)).thenReturn("testuser");
         when(userService.findByUsername("testuser")).thenReturn(Optional.of(user));
-        when(cartService.getCartByUserId(1L)).thenReturn(cart);
+        when(cartService.getCartByUserId(1L)).thenReturn(Optional.ofNullable(cart));
         when(cartService.getBooksInCart(1L)).thenReturn(booksInCart);
         when(bookMapper.toDtoList(booksInCart)).thenReturn(bookDTOs);
 
@@ -135,7 +135,7 @@ class CartControllerTest {
 
         when(jwtUtil.getUsernameFromToken(token)).thenReturn("testuser");
         when(userService.findByUsername("testuser")).thenReturn(Optional.of(user));
-        when(cartService.getCartByUserId(1L)).thenReturn(cart);
+        when(cartService.getCartByUserId(1L)).thenReturn(Optional.ofNullable(cart));
         when(cartService.calculateTotalPrice(1L)).thenReturn(totalPrice);
 
         ResponseEntity<Double> result = cartController.getTotalPrice(validAuthHeader);

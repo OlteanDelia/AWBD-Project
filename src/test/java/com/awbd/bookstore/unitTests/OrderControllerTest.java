@@ -100,7 +100,7 @@ class OrderControllerTest {
     void createOrder_Success() {
         when(jwtUtil.getUsernameFromToken(token)).thenReturn("testuser");
         when(userService.findByUsername("testuser")).thenReturn(Optional.of(user));
-        when(cartService.getCartByUserId(1L)).thenReturn(cart);
+        when(cartService.getCartByUserId(1L)).thenReturn(Optional.ofNullable(cart));
         when(orderService.createOrder(1L, List.of(1L), 1L)).thenReturn(order);
         when(orderMapper.toDto(order)).thenReturn(orderDTO);
         doNothing().when(cartService).clearCart(1L);

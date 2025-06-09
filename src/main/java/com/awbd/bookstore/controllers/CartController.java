@@ -18,6 +18,7 @@ import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
 import java.util.List;
+import java.util.Optional;
 
 @RestController
 @RequestMapping("/api/cart")
@@ -57,7 +58,10 @@ public class CartController {
         User user = userService.findByUsername(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found: " + username));
 
-        Cart cart = cartService.getCartByUserId(user.getId());
+
+        Cart cart = cartService.getCartByUserId(user.getId())
+                .orElseThrow(() -> new RuntimeException("Cart not found for user: " + user.getId()));
+
         cartService.addBookToCart(cart.getId(), bookId);
         logger.info("Book with ID {} added to cart with ID {}", bookId, cart.getId());
 
@@ -82,7 +86,10 @@ public class CartController {
         User user = userService.findByUsername(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found: " + username));
 
-        Cart cart = cartService.getCartByUserId(user.getId());
+
+        Cart cart = cartService.getCartByUserId(user.getId())
+                .orElseThrow(() -> new RuntimeException("Cart not found for user: " + user.getId()));
+
         List<Book> booksInCart = cartService.getBooksInCart(cart.getId());
 
         logger.info("Retrieved books for cart with ID {}", cart.getId());
@@ -108,7 +115,8 @@ public class CartController {
         User user = userService.findByUsername(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found: " + username));
 
-        Cart cart = cartService.getCartByUserId(user.getId());
+        Cart cart = cartService.getCartByUserId(user.getId())
+                .orElseThrow(() -> new RuntimeException("Cart not found for user: " + user.getId()));
         double totalPrice = cartService.calculateTotalPrice(cart.getId());
 
         logger.info("Total price for cart with ID {}: {}", cart.getId(), totalPrice);
