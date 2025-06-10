@@ -17,7 +17,7 @@ public class BookDTO {
     private int stock;
     private Long categoryId;
     private Long authorId;
-
+    private String author;
 
     public BookDTO(String title, double price, int stock, Long categoryId, Long authorId) {
         this.title = title;

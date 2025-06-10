@@ -69,4 +69,11 @@ public class BookController {
         logger.info("Deleted book with id: {}", id);
         return ResponseEntity.noContent().build();
     }
+
+    @GetMapping("/category/{categoryId}")
+    public ResponseEntity<List<BookDTO>> getBooksByCategory(@PathVariable Long categoryId) {
+        List<Book> books = bookService.getBookBycategoryId(categoryId);
+        logger.info("Fetched books by category ID: {}", categoryId);
+        return ResponseEntity.ok(bookMapper.toDtoList(books));
+    }
 }

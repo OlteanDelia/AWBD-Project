@@ -2,7 +2,7 @@
 <html>
 <head>
     <meta charset="UTF-8">
-    <title>Categories - Bookstore</title>
+    <title>Wishlist - Bookstore</title>
     <style>
         body {
             font-family: Arial, sans-serif;
@@ -43,7 +43,7 @@
         }
 
         main {
-            max-width: 800px;
+            max-width: 900px;
             margin: 0 auto;
             background-color: white;
             padding: 2rem;
@@ -64,48 +64,77 @@
             margin: 1rem 0;
         }
 
-        #no-categories-message {
+        #empty-wishlist-message {
             text-align: center;
             color: #666;
             font-size: 1.1rem;
             margin: 1rem 0;
         }
 
-        #categories-list {
+        #books-list {
             list-style: none;
             padding: 0;
         }
 
-        #categories-list li {
+        #books-list li {
             background-color: #f9f9f9;
             border: 1px solid #ddd;
             border-radius: 6px;
             margin-bottom: 1rem;
             padding: 1.5rem;
             transition: background-color 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
         }
 
-        #categories-list li:hover {
+        #books-list li:hover {
             background-color: #e9e9e9;
-            cursor: pointer;
         }
 
-        .category-name {
+        .book-info {
+            flex-grow: 1;
+        }
+
+        .book-title {
             font-size: 1.4rem;
             font-weight: bold;
             color: #333;
             margin-bottom: 0.5rem;
         }
 
-        .category-description {
+        .book-author {
             color: #666;
-            line-height: 1.5;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
         }
 
-        .category-book-count {
-            font-size: 0.9rem;
-            color: #888;
-            margin-top: 0.5rem;
+        .book-price {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #2c5530;
+            margin-left: 1rem;
+            padding: 20px;
+        }
+
+
+
+        .remove-button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        .remove-button:hover {
+            background-color: #c82333;
+        }
+
+        .remove-button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
         }
 
         footer {
@@ -113,53 +142,56 @@
             margin-top: 2rem;
             color: #666;
         }
+
     </style>
 </head>
 <body>
 <header>
-    <h1>Book Categories</h1>
+    <h1>Your Wishlist</h1>
     <nav>
         <button id="logout-button" style="display: none;" onclick="logout()">Logout</button>
         <a href="/login" id="login-link">Login</a>
         <a href="/register" id="register-link">Register</a>
+        <a href="/home">Home</a>
         <a href="/profile">Profile</a>
         <a href="/cart">Cart</a>
-        <a href="/wishlist">Wishlist</a>
-        <a href="/orderhistory">Order History</a>
+        <a href="/orders">Order History</a>
     </nav>
 </header>
 
 <main>
     <section>
-        <div id="loading-message">Loading categories...</div>
+        <div id="loading-message">Loading your wishlist...</div>
         <div id="error-message" style="display: none;">
-            Failed to load categories. Please try again later.
+            Failed to load wishlist. Please try again later.
         </div>
-        <div id="no-categories-message" style="display: none;">
-            No categories available.
+        <div id="empty-wishlist-message" style="display: none;">
+            Your wishlist is empty. Start adding books you'd like to read!
         </div>
-        <ul id="categories-list"></ul>
+
+        <ul id="books-list"></ul>
     </section>
 </main>
 
+<footer>
+    <p>&copy; 2024 Bookstore. All rights reserved.</p>
+</footer>
 
 <script>
-    let categoriesData = [];
+    let wishlistData = [];
 
     window.addEventListener('DOMContentLoaded', function() {
-
         if (!checkAuthStatus()) {
             return;
         }
-
-        loadCategories();
+        loadWishlist();
     });
 
     function checkAuthStatus() {
         const token = localStorage.getItem('authToken');
 
         if (!token) {
-            alert('Please log in to access categories.');
+            alert('Please log in to access your wishlist.');
             window.location.href = '/login';
             return false;
         }
@@ -171,11 +203,10 @@
         return true;
     }
 
-    function loadCategories() {
+    function loadWishlist() {
         const token = localStorage.getItem('authToken');
 
-        // Fixed: Changed from '/api/categories/all' to '/api/categories'
-        fetch('/api/categories', {
+        fetch('/api/wishlists/user', {
             method: 'GET',
             headers: {
                 'Authorization': 'Bearer ' + token,
@@ -190,58 +221,105 @@
                     return;
                 }
 
-                if (!response.ok) {
-                    if (response.status === 404) {
-                        throw new Error('No categories found');
-                    }
-                    throw new Error('Failed to fetch categories');
+                if (response.ok) {
+                    return response.json();
                 }
-                return response.json();
+
+                // Handle case where wishlist might be empty
+                if (response.status === 404 || response.status === 204) {
+                    return [];
+                }
+
+                throw new Error(`Failed to fetch wishlist data: ${response.status}`);
             })
-            .then(categories => {
-                if (!categories) return;
-                categoriesData = categories;
-                displayCategories(categories);
+            .then(data => {
+                if (!data) return;
+                wishlistData = data || [];
+                displayWishlist(data || []);
             })
             .catch(error => {
-                console.error('Error loading categories:', error);
+                console.error('Error loading wishlist:', error);
                 document.getElementById('loading-message').style.display = 'none';
 
-                if (error.message === 'No categories found') {
-                    document.getElementById('no-categories-message').style.display = 'block';
+                // Check if the error might be due to an empty wishlist
+                if (wishlistData.length === 0) {
+                    displayWishlist([]);
                 } else {
                     document.getElementById('error-message').style.display = 'block';
                 }
             });
     }
 
-    function displayCategories(categories) {
-        const categoriesList = document.getElementById('categories-list');
-        document.getElementById('loading-message').style.display = 'none';
+    function displayWishlist(books) {
+        const booksList = document.getElementById('books-list');
 
-        if (!categories || categories.length === 0) {
-            document.getElementById('no-categories-message').style.display = 'block';
+        document.getElementById('loading-message').style.display = 'none';
+        document.getElementById('error-message').style.display = 'none';
+        document.getElementById('empty-wishlist-message').style.display = 'none';
+
+        if (!books || books.length === 0) {
+            document.getElementById('empty-wishlist-message').style.display = 'block';
             return;
         }
 
+        // Display books
         let html = '';
-        categories.forEach(category => {
+        books.forEach(book => {
             html += `
-                <li onclick="goToCategory(${category.id})">
-                    <div class="category-name">${category.name}</div>
-                    <div class="category-description">
-                        ${category.description || 'Explore books in this category'}
+                <li>
+                    <div class="book-info">
+                        <div class="book-title">${book.title}</div>
+                        <div class="book-author">by ${book.authorName || book.author || 'Unknown Author'}</div>
                     </div>
-                    ${category.bookCount ? `<div class="category-book-count">${category.bookCount} books available</div>` : ''}
+                    <div class="book-price">${book.price.toFixed(2)}</div>
+                    <button class="remove-button" onclick="removeFromWishlist(${book.id})" id="remove-btn-${book.id}">
+                        Remove
+                    </button>
                 </li>
             `;
         });
 
-        categoriesList.innerHTML = html;
+        booksList.innerHTML = html;
     }
 
-    function goToCategory(categoryId) {
-        window.location.href = `/category?id=${categoryId}`;
+    function removeFromWishlist(bookId) {
+        const token = localStorage.getItem('authToken');
+        const removeButton = document.getElementById(`remove-btn-${bookId}`);
+
+        // Disable button while processing
+        removeButton.disabled = true;
+        removeButton.textContent = 'Removing...';
+
+        fetch(`/api/wishlists/${bookId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                if (response.status === 401 || response.status === 403) {
+                    alert('Your session has expired. Please log in again.');
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to remove book from wishlist');
+                }
+
+                // Refresh the entire page after successful removal
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('Error removing book from wishlist:', error);
+                alert('Failed to remove book from wishlist. Please try again.');
+
+                // Re-enable button on error
+                removeButton.disabled = false;
+                removeButton.textContent = 'Remove';
+            });
     }
 
     function logout() {
@@ -262,9 +340,7 @@
             })
             .finally(() => {
                 localStorage.removeItem('authToken');
-
                 alert('You have been logged out successfully.');
-
                 window.location.href = '/login';
             });
     }

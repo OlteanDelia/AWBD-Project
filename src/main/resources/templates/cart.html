@@ -1,0 +1,724 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <meta charset="UTF-8">
+    <title>Shopping Cart - Bookstore</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        header {
+            background-color: #333;
+            color: white;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            margin: 0;
+        }
+
+        nav {
+            margin-top: 1rem;
+        }
+
+        nav a, nav button {
+            color: white;
+            text-decoration: none;
+            margin-right: 1rem;
+            padding: 0.5rem 1rem;
+            background: none;
+            border: 1px solid white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        nav a:hover, nav button:hover {
+            background-color: white;
+            color: #333;
+        }
+
+        main {
+            max-width: 900px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #loading-message {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #666;
+        }
+
+        #error-message {
+            text-align: center;
+            color: red;
+            font-size: 1.1rem;
+            margin: 1rem 0;
+        }
+
+        #empty-cart-message {
+            text-align: center;
+            color: #666;
+            font-size: 1.1rem;
+            margin: 1rem 0;
+        }
+
+        #cart-summary {
+            background-color: #f9f9f9;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            text-align: center;
+        }
+
+        #best-sale {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 0.75rem;
+            margin: 1rem 0;
+            color: #856404;
+            font-weight: bold;
+        }
+
+        #total-price {
+            font-size: 1.8rem;
+            font-weight: bold;
+            color: #2c5530;
+            margin-bottom: 1rem;
+        }
+
+        #potential-savings {
+            background-color: #fff3cd;
+            border: 1px solid #ffeaa7;
+            border-radius: 4px;
+            padding: 0.75rem;
+            margin: 1rem 0;
+            color: #856404;
+            font-weight: bold;
+        }
+
+        #checkout-button {
+            background-color: #28a745;
+            color: white;
+            border: none;
+            padding: 1rem 2rem;
+            font-size: 1.1rem;
+            border-radius: 6px;
+            cursor: pointer;
+            margin-right: 1rem;
+        }
+
+        #checkout-button:hover {
+            background-color: #218838;
+        }
+
+        #checkout-button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        #books-list {
+            list-style: none;
+            padding: 0;
+        }
+
+        #books-list li {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 6px;
+            margin-bottom: 1rem;
+            padding: 1.5rem;
+            transition: background-color 0.3s;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        #books-list li:hover {
+            background-color: #e9e9e9;
+        }
+
+        .book-info {
+            flex-grow: 1;
+        }
+
+        .book-title {
+            font-size: 1.4rem;
+            font-weight: bold;
+            color: #333;
+            margin-bottom: 0.5rem;
+        }
+
+        .book-author {
+            color: #666;
+            font-size: 1.1rem;
+            margin-bottom: 0.5rem;
+        }
+
+        .book-category {
+            color: #888;
+            font-size: 0.9rem;
+            font-style: italic;
+        }
+
+        .book-price {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #2c5530;
+            margin-left: 1rem;
+        }
+
+        .discounted-book {
+            background-color: #e8f5e8;
+            border: 1px solid #4caf50;
+        }
+
+        .remove-button {
+            background-color: #dc3545;
+            color: white;
+            border: none;
+            padding: 0.5rem 1rem;
+            border-radius: 4px;
+            cursor: pointer;
+            margin-left: 1rem;
+        }
+
+        .remove-button:hover {
+            background-color: #c82333;
+        }
+
+        .remove-button:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #666;
+        }
+
+        .success-message {
+            background-color: #d4edda;
+            color: #155724;
+            border: 1px solid #c3e6cb;
+            border-radius: 4px;
+            padding: 1rem;
+            margin: 1rem 0;
+            text-align: center;
+        }
+    </style>
+</head>
+<body>
+<header>
+    <h1>Your Shopping Cart</h1>
+    <nav>
+        <button id="logout-button" style="display: none;" onclick="logout()">Logout</button>
+        <a href="/login" id="login-link">Login</a>
+        <a href="/register" id="register-link">Register</a>
+        <a href="/home">Home</a>
+        <a href="/profile">Profile</a>
+        <a href="/wishlist">Wishlist</a>
+        <a href="/orders">Order History</a>
+    </nav>
+</header>
+
+<main>
+    <section>
+        <div id="loading-message">Loading your cart...</div>
+        <div id="error-message" style="display: none;">
+            Failed to load cart. Please try again later.
+        </div>
+        <div id="empty-cart-message" style="display: none;">
+            Your cart is empty.
+        </div>
+
+
+
+        <div id="cart-summary" style="display: none;">
+            <div id="total-price">Total: $0.00</div>
+            <div id="potential-savings" style="display: none;"></div>
+            <button id="checkout-button" onclick="proceedToCheckout()">Proceed to Checkout</button>
+        </div>
+
+        <div id="available-sales" style="display: none;">
+            <h3>🎉 Available Sales</h3>
+            <div id="sales-list"></div>
+        </div>
+
+        <ul id="books-list"></ul>
+    </section>
+</main>
+
+<footer>
+    <p>&copy; 2024 Bookstore. All rights reserved.</p>
+</footer>
+
+<script>
+    let cartData = [];
+    let totalPrice = 0;
+    let availableSales = [];
+    let bestSale = null;
+
+    window.addEventListener('DOMContentLoaded', function() {
+        if (!checkAuthStatus()) {
+            return;
+        }
+        loadCart();
+    });
+
+    function checkAuthStatus() {
+        const token = localStorage.getItem('authToken');
+
+        if (!token) {
+            alert('Please log in to access your cart.');
+            window.location.href = '/login';
+            return false;
+        }
+
+        document.getElementById('login-link').style.display = 'none';
+        document.getElementById('register-link').style.display = 'none';
+        document.getElementById('logout-button').style.display = 'inline';
+
+        return true;
+    }
+
+    function loadCart() {
+        const token = localStorage.getItem('authToken');
+
+        console.log('Starting to load cart...');
+        console.log('Token exists:', !!token);
+
+        // Show loading message - check if element exists first
+        const loadingElement = document.getElementById('loading-message');
+        const errorElement = document.getElementById('error-message');
+        const emptyElement = document.getElementById('empty-cart-message');
+
+        if (loadingElement) loadingElement.style.display = 'block';
+        if (errorElement) errorElement.style.display = 'none';
+        if (emptyElement) emptyElement.style.display = 'none';
+
+        // Load cart, total, and sales together
+        Promise.all([
+            fetch('/api/cart/books', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            }),
+            fetch('/api/cart/total', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            }),
+            fetch('/api/sales/active', {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+        ])
+            .then(async ([booksResponse, totalResponse, salesResponse]) => {
+                console.log('Cart books response status:', booksResponse.status);
+                console.log('Cart total response status:', totalResponse.status);
+                console.log('Sales response status:', salesResponse.status);
+
+                if (booksResponse.status === 401 || booksResponse.status === 403 ||
+                    totalResponse.status === 401 || totalResponse.status === 403) {
+                    alert('Your session has expired. Please log in again.');
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                // Get books
+                let books = [];
+                if (booksResponse.ok) {
+                    books = await booksResponse.json();
+                } else if (booksResponse.status === 404 || booksResponse.status === 204) {
+                    books = [];
+                } else {
+                    throw new Error('Failed to load cart books: ' + booksResponse.status);
+                }
+
+                // Get total
+                let total = 0;
+                if (totalResponse.ok) {
+                    total = await totalResponse.json();
+                } else if (totalResponse.status === 404 || totalResponse.status === 204) {
+                    total = 0;
+                } else {
+                    throw new Error('Failed to load cart total: ' + totalResponse.status);
+                }
+
+                // Get sales (non-critical)
+                let sales = [];
+                if (salesResponse.ok) {
+                    sales = await salesResponse.json();
+                }
+
+                return { books, total, sales };
+            })
+            .then(data => {
+                console.log('Cart data loaded:', data);
+                cartData = data.books || [];
+                totalPrice = data.total || 0;
+                availableSales = data.sales || [];
+
+                // Find best applicable sale
+                bestSale = findBestApplicableSale();
+                console.log('Best sale found:', bestSale);
+
+                // Hide loading message
+                if (loadingElement) loadingElement.style.display = 'none';
+
+                // Display cart
+                displayCart(cartData, totalPrice);
+                displayAvailableSales();
+            })
+            .catch(error => {
+                console.error('Error loading cart:', error);
+                if (loadingElement) loadingElement.style.display = 'none';
+
+                // Show specific error message
+                if (errorElement) {
+                    errorElement.textContent = 'Failed to load cart: ' + error.message;
+                    errorElement.style.display = 'block';
+                }
+            });
+    }
+
+    function loadSalesData(token) {
+        fetch('/api/sales/active', {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                if (response.ok) {
+                    return response.json();
+                }
+                console.log('Sales not available or error loading sales');
+                return [];
+            })
+            .then(sales => {
+                availableSales = sales || [];
+
+                // Find best applicable sale
+                bestSale = findBestApplicableSale();
+
+                // Re-display cart with sale information
+                displayCart(cartData, totalPrice);
+                displayBestSale();
+            })
+            .catch(error => {
+                console.log('Error loading sales (non-critical):', error);
+                availableSales = [];
+                bestSale = null;
+            });
+    }
+
+    function findBestApplicableSale() {
+        if (!availableSales || availableSales.length === 0 || !cartData || cartData.length === 0) {
+            return null;
+        }
+
+        let bestSale = null;
+        let maxSavings = 0;
+
+        availableSales.forEach(sale => {
+            const savings = calculatePotentialSavings(sale);
+            if (savings > maxSavings) {
+                maxSavings = savings;
+                bestSale = sale;
+            }
+        });
+
+        return bestSale;
+    }
+
+    function calculatePotentialSavings(sale) {
+        if (!sale.categoryIds || !cartData) return 0;
+
+        let savings = 0;
+        cartData.forEach(book => {
+            // Check if book categoryId matches any sale category
+            if (book.categoryId && sale.categoryIds.includes(book.categoryId)) {
+                savings += book.price * (sale.discountPercentage / 100);
+            }
+        });
+
+        return savings;
+    }
+
+    function displayAvailableSales() {
+        const salesContainer = document.getElementById('available-sales');
+        const salesList = document.getElementById('sales-list');
+
+        if (!availableSales || availableSales.length === 0) {
+            salesContainer.style.display = 'none';
+            return;
+        }
+
+        let salesHtml = '';
+        availableSales.forEach(sale => {
+            const savings = calculatePotentialSavings(sale);
+            const isBest = bestSale && sale.id === bestSale.id;
+            const cssClass = isBest ? 'sale-item best-sale' : 'sale-item';
+
+            salesHtml += `
+                <div class="${cssClass}">
+                    ${sale.discountPercentage}% off
+                    ${sale.description ? ` - ${sale.description}` : ''}
+                    ${savings > 0 ? ` (You save: ${savings.toFixed(2)})` : ' (Not applicable to your cart)'}
+                    ${isBest ? ' ⭐ BEST DEAL' : ''}
+                </div>
+            `;
+        });
+
+        salesList.innerHTML = salesHtml;
+        salesContainer.style.display = 'block';
+    }
+
+    function displayCart(books, total) {
+        const booksList = document.getElementById('books-list');
+        const cartSummary = document.getElementById('cart-summary');
+        const totalPriceElement = document.getElementById('total-price');
+        const potentialSavingsElement = document.getElementById('potential-savings');
+
+        document.getElementById('loading-message').style.display = 'none';
+        document.getElementById('error-message').style.display = 'none';
+        document.getElementById('empty-cart-message').style.display = 'none';
+
+        if (!books || books.length === 0) {
+            document.getElementById('empty-cart-message').style.display = 'block';
+            cartSummary.style.display = 'none';
+            document.getElementById('available-sales').style.display = 'none';
+            return;
+        }
+
+        // Calculate and show discounted total
+        let displayTotal = total;
+        if (bestSale) {
+            const savings = calculatePotentialSavings(bestSale);
+            if (savings > 0) {
+                displayTotal = total - savings;
+                potentialSavingsElement.innerHTML = `
+                    🎉 <strong>${bestSale.discountPercentage}% discount</strong> applied!<br>
+                    You save <strong>${savings.toFixed(2)}</strong>
+                `;
+                potentialSavingsElement.style.display = 'block';
+            } else {
+                potentialSavingsElement.style.display = 'none';
+            }
+        } else {
+            potentialSavingsElement.style.display = 'none';
+        }
+
+        // Show cart summary with final price
+        totalPriceElement.textContent = `Total: ${displayTotal.toFixed(2)}`;
+        cartSummary.style.display = 'block';
+
+        // Display books with sale indicators
+        let html = '';
+        books.forEach(book => {
+            const isDiscounted = bestSale && bestSale.categoryIds &&
+                bestSale.categoryIds.includes(book.categoryId);
+            const itemClass = isDiscounted ? 'discounted-book' : '';
+
+            html += `
+                <li class="${itemClass}">
+                    <div class="book-info">
+                        <div class="book-title">
+                            ${book.title}
+                            ${isDiscounted ? ' 🏷️' : ''}
+                        </div>
+                        <div class="book-author">by ${book.authorName || book.author || 'Unknown Author'}</div>
+                        ${isDiscounted ? `<div style="color: #4caf50; font-weight: bold; font-size: 0.9rem;">
+                            ${bestSale.discountPercentage}% discount will apply!
+                        </div>` : ''}
+                    </div>
+                    <div class="book-price">${book.price.toFixed(2)}</div>
+                    <button class="remove-button" onclick="removeFromCart(${book.id})" id="remove-btn-${book.id}">
+                        Remove
+                    </button>
+                </li>
+            `;
+        });
+
+        booksList.innerHTML = html;
+    }
+
+    function removeFromCart(bookId) {
+        const token = localStorage.getItem('authToken');
+        const removeButton = document.getElementById(`remove-btn-${bookId}`);
+
+        // Disable button while processing
+        removeButton.disabled = true;
+        removeButton.textContent = 'Removing...';
+
+        fetch(`/api/cart/remove/${bookId}`, {
+            method: 'DELETE',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                if (response.status === 401 || response.status === 403) {
+                    alert('Your session has expired. Please log in again.');
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to remove book from cart');
+                }
+
+                // Refresh the entire page after successful removal
+                window.location.reload();
+            })
+            .catch(error => {
+                console.error('Error removing book from cart:', error);
+                alert('Failed to remove book from cart. Please try again.');
+
+                // Re-enable button on error
+                removeButton.disabled = false;
+                removeButton.textContent = 'Remove';
+            });
+    }
+
+    function proceedToCheckout() {
+        if (cartData.length === 0) {
+            alert('Your cart is empty!');
+            return;
+        }
+
+        const token = localStorage.getItem('authToken');
+
+        // Show loading state
+        const checkoutButton = document.getElementById('checkout-button');
+        const originalText = checkoutButton.textContent;
+        checkoutButton.disabled = true;
+        checkoutButton.textContent = 'Creating Order...';
+
+        console.log('Creating order with cart data:', cartData);
+
+        // Create the order using your existing backend endpoint
+        fetch('/api/orders', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                console.log('Order creation response status:', response.status);
+
+                if (response.status === 401 || response.status === 403) {
+                    alert('Your session has expired. Please log in again.');
+                    localStorage.removeItem('authToken');
+                    window.location.href = '/login';
+                    return;
+                }
+
+                if (!response.ok) {
+                    return response.text().then(text => {
+                        console.error('Order creation failed:', text);
+                        throw new Error('Failed to create order: ' + text);
+                    });
+                }
+
+                return response.json();
+            })
+            .then(orderData => {
+                console.log('Order created successfully:', orderData);
+
+                // If we have a best sale, apply it to the order
+                if (bestSale && orderData.id) {
+                    return applySaleToOrder(orderData.id, bestSale.id, token);
+                }
+
+                return orderData;
+            })
+            .then(() => {
+                // Always redirect to /order as you wanted
+                window.location.href = '/order';
+            })
+            .catch(error => {
+                console.error('Error creating order:', error);
+                alert('Failed to create order: ' + error.message);
+
+                // Re-enable button on error
+                checkoutButton.disabled = false;
+                checkoutButton.textContent = originalText;
+            });
+    }
+
+    function applySaleToOrder(orderId, saleId, token) {
+        console.log(`Applying sale ${saleId} to order ${orderId}`);
+
+        return fetch(`/api/orders/${orderId}/apply-sale`, {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ saleId: saleId })
+        })
+            .then(response => {
+                if (!response.ok) {
+                    console.warn('Failed to apply sale, but order was created successfully');
+                    return; // Don't fail the entire process if sale application fails
+                }
+                console.log('Sale applied successfully');
+                return response.json();
+            })
+            .catch(error => {
+                console.warn('Error applying sale:', error);
+                // Don't throw error - order was still created successfully
+            });
+    }
+
+    function logout() {
+        const token = localStorage.getItem('authToken');
+
+        fetch('/api/users/logout', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                console.log('Logout response status:', response.status);
+            })
+            .catch(error => {
+                console.error('Logout API error:', error);
+            })
+            .finally(() => {
+                localStorage.removeItem('authToken');
+                alert('You have been logged out successfully.');
+                window.location.href = '/login';
+            });
+    }
+</script>
+</body>
+</html>

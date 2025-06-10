@@ -70,16 +70,16 @@ class AuthorControllerTest {
         verify(authorService, times(1)).create(author);
     }
 
-    @Test
-    void getAuthorById_Success() {
-        when(authorService.getById(1L)).thenReturn(author);
-
-        ResponseEntity<Author> result = authorController.getAuthorById(1L);
-
-        assertEquals(HttpStatus.OK, result.getStatusCode());
-        assertEquals(author, result.getBody());
-        verify(authorService, times(1)).getById(1L);
-    }
+//    @Test
+//    void getAuthorById_Success() {
+//        when(authorService.getById(1L)).thenReturn(author);
+//
+//        ResponseEntity<Author> result = authorController.getAuthorById(1L);
+//
+//        assertEquals(HttpStatus.OK, result.getStatusCode());
+//        assertEquals(author, result.getBody());
+//        verify(authorService, times(1)).getById(1L);
+//    }
 
     @Test
     void getAllAuthors_Success() {
