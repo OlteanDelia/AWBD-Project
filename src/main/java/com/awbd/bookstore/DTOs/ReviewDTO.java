@@ -17,6 +17,7 @@ public class ReviewDTO {
     private String createdAt;
     private Long userId;
     private Long bookId;
+    private String username;
 
     public ReviewDTO(String content, int rating, String createdAt, Long userId, Long bookId) {
         this.content = content;
@@ -24,5 +25,14 @@ public class ReviewDTO {
         this.createdAt = createdAt;
         this.userId = userId;
         this.bookId = bookId;
+    }
+
+    public ReviewDTO(String content, int rating, String createdAt, Long userId, Long bookId, String username) {
+        this.content = content;
+        this.rating = rating;
+        this.createdAt = createdAt;
+        this.userId = userId;
+        this.bookId = bookId;
+        this.username = username;
     }
 }

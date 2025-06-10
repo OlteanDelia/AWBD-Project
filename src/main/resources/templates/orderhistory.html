@@ -1,10 +1,430 @@
 <!DOCTYPE html>
-<html lang="en">
+<html>
 <head>
     <meta charset="UTF-8">
-    <title>Title</title>
+    <title>Order History - Bookstore</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            margin: 0;
+            padding: 20px;
+            background-color: #f5f5f5;
+        }
+
+        header {
+            background-color: #333;
+            color: white;
+            padding: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        header h1 {
+            margin: 0;
+        }
+
+        nav {
+            margin-top: 1rem;
+        }
+
+        nav a, nav button {
+            color: white;
+            text-decoration: none;
+            margin-right: 1rem;
+            padding: 0.5rem 1rem;
+            background: none;
+            border: 1px solid white;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+
+        nav a:hover, nav button:hover {
+            background-color: white;
+            color: #333;
+        }
+
+        main {
+            max-width: 1000px;
+            margin: 0 auto;
+            background-color: white;
+            padding: 2rem;
+            border-radius: 8px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.1);
+        }
+
+        #loading-message {
+            text-align: center;
+            font-size: 1.2rem;
+            color: #666;
+            padding: 3rem;
+        }
+
+        #error-message {
+            text-align: center;
+            color: red;
+            font-size: 1.1rem;
+            margin: 1rem 0;
+            padding: 2rem;
+        }
+
+        #no-orders-message {
+            text-align: center;
+            color: #666;
+            font-size: 1.1rem;
+            margin: 1rem 0;
+            padding: 3rem;
+        }
+
+        .orders-container {
+            display: none;
+        }
+
+        .order-card {
+            background-color: #f9f9f9;
+            border: 1px solid #ddd;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 1.5rem;
+            transition: all 0.3s ease;
+        }
+
+        .order-card:hover {
+            background-color: #e9e9e9;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .order-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+            border-bottom: 2px solid #ddd;
+            padding-bottom: 1rem;
+        }
+
+        .order-id {
+            font-size: 1.3rem;
+            font-weight: bold;
+            color: #333;
+        }
+
+        .order-date {
+            color: #666;
+            font-size: 1rem;
+        }
+
+        .order-summary {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1rem;
+        }
+
+        .order-total {
+            font-size: 1.2rem;
+            font-weight: bold;
+            color: #28a745;
+        }
+
+        .book-count {
+            color: #666;
+            font-size: 1rem;
+        }
+
+        .books-preview {
+            color: #555;
+            font-size: 0.9rem;
+            margin-bottom: 1rem;
+        }
+
+        .page-title {
+            text-align: center;
+            color: #333;
+            margin-bottom: 2rem;
+            font-size: 2rem;
+        }
+
+        footer {
+            text-align: center;
+            margin-top: 2rem;
+            color: #666;
+        }
+
+        @media (max-width: 768px) {
+            .order-header {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+
+            .order-summary {
+                flex-direction: column;
+                align-items: flex-start;
+                gap: 0.5rem;
+            }
+        }
+    </style>
 </head>
 <body>
+<header>
+    <h1>Order History</h1>
+    <nav>
+        <button id="logout-button" style="display: none;" onclick="logout()">Logout</button>
+        <a href="/login" id="login-link">Login</a>
+        <a href="/register" id="register-link">Register</a>
+        <a href="/home">Home</a>
+        <a href="/profile">Profile</a>
+        <a href="/cart">Cart</a>
+        <a href="/wishlist">Wishlist</a>
+        <a href="/orders">Order History</a>
+    </nav>
+</header>
 
+<main>
+    <h2 class="page-title">Your Order History</h2>
+
+    <div id="loading-message">Loading your orders...</div>
+
+    <div id="error-message" style="display: none;">
+        Failed to load orders. Please try again later.
+    </div>
+
+    <div id="no-orders-message" style="display: none;">
+        You haven't placed any orders yet. Start shopping to see your orders here!
+    </div>
+
+    <div id="orders-container" class="orders-container">
+        <!-- Orders will be dynamically loaded here -->
+    </div>
+</main>
+
+<footer>
+    <p>&copy; 2024 Bookstore. All rights reserved.</p>
+</footer>
+
+<script>
+    let ordersData = [];
+
+    function getAuthToken() {
+        return window.authToken ||
+            (typeof localStorage !== 'undefined' ? localStorage.getItem('authToken') : null) ||
+            'simulated-auth-token-12345';
+    }
+
+    function removeAuthToken() {
+        window.authToken = null;
+        if (typeof localStorage !== 'undefined') {
+            localStorage.removeItem('authToken');
+        }
+    }
+
+    window.addEventListener('DOMContentLoaded', function() {
+        if (!checkAuthStatus()) {
+            return;
+        }
+        loadOrderHistory();
+    });
+
+    function checkAuthStatus() {
+        const token = getAuthToken();
+
+        if (!token) {
+            alert('Please log in to view your order history.');
+            window.location.href = '/login';
+            return false;
+        }
+
+        document.getElementById('login-link').style.display = 'none';
+        document.getElementById('register-link').style.display = 'none';
+        document.getElementById('logout-button').style.display = 'inline';
+
+        return true;
+    }
+
+    function loadOrderHistory() {
+        const token = getAuthToken();
+        console.log('Loading order history...');
+
+        fetch('/api/orders/history', {
+            method: 'GET',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                console.log('Order history response status:', response.status);
+
+                if (response.status === 401 || response.status === 403) {
+                    alert('Your session has expired. Please log in again.');
+                    removeAuthToken();
+                    window.location.href = '/login';
+                    return;
+                }
+
+                if (response.status === 204) {
+                    // No content - user has no orders
+                    return [];
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to fetch order history');
+                }
+
+                return response.json();
+            })
+            .then(orders => {
+                console.log('Orders received:', orders);
+                ordersData = orders || [];
+                displayOrders(ordersData);
+            })
+            .catch(error => {
+                console.error('Error loading order history:', error);
+                showError('Failed to load order history. Please try again later.');
+            });
+    }
+
+    function displayOrders(orders) {
+        document.getElementById('loading-message').style.display = 'none';
+
+        if (!orders || orders.length === 0) {
+            document.getElementById('no-orders-message').style.display = 'block';
+            return;
+        }
+
+        document.getElementById('orders-container').style.display = 'block';
+
+        // Load book details for all orders
+        loadOrdersWithBooks(orders);
+    }
+
+    function loadOrdersWithBooks(orders) {
+        const token = getAuthToken();
+
+        // Create promises to load books for each order
+        const orderPromises = orders.map(order => {
+            const bookPromises = Array.from(order.bookIds).map(bookId => {
+                return fetch(`/api/books/${bookId}`, {
+                    method: 'GET',
+                    headers: {
+                        'Authorization': 'Bearer ' + token,
+                        'Content-Type': 'application/json'
+                    }
+                })
+                    .then(response => {
+                        if (response.ok) {
+                            return response.json();
+                        }
+                        console.warn(`Failed to fetch book ${bookId}`);
+                        return null;
+                    })
+                    .catch(error => {
+                        console.warn(`Error fetching book ${bookId}:`, error);
+                        return null;
+                    });
+            });
+
+            return Promise.all(bookPromises).then(books => {
+                const validBooks = books.filter(book => book !== null);
+                const totalPrice = validBooks.reduce((sum, book) => sum + (book.price || 0), 0);
+
+                return {
+                    ...order,
+                    books: validBooks,
+                    totalPrice: totalPrice
+                };
+            });
+        });
+
+        Promise.all(orderPromises)
+            .then(ordersWithBooks => {
+                console.log('Orders with books loaded:', ordersWithBooks);
+                renderOrderCards(ordersWithBooks);
+            })
+            .catch(error => {
+                console.error('Error loading books for orders:', error);
+                // Still render orders without book details
+                renderOrderCards(orders);
+            });
+    }
+
+    function renderOrderCards(orders) {
+        const container = document.getElementById('orders-container');
+
+        let html = '';
+        orders.forEach(order => {
+            const orderDate = new Date(order.orderDate);
+            const formattedDate = orderDate.toLocaleDateString('en-US', {
+                year: 'numeric',
+                month: 'long',
+                day: 'numeric',
+                hour: '2-digit',
+                minute: '2-digit'
+            });
+
+            const bookCount = order.books ? order.books.length : order.bookIds ? order.bookIds.size || order.bookIds.length : 0;
+            const totalPrice = order.totalPrice || 0;
+
+            // Create book preview text
+            let booksPreview = 'Loading books...';
+            if (order.books && order.books.length > 0) {
+                const bookTitles = order.books.slice(0, 3).map(book => book.title || 'Unknown Title');
+                booksPreview = bookTitles.join(', ');
+                if (order.books.length > 3) {
+                    booksPreview += ` +${order.books.length - 3} more`;
+                }
+            }
+
+            html += `
+                <div class="order-card">
+                    <div class="order-header">
+                        <div class="order-id">Order #${order.id}</div>
+                        <div class="order-date">${formattedDate}</div>
+                    </div>
+
+                    <div class="order-summary">
+                        <div class="book-count">${bookCount} book${bookCount !== 1 ? 's' : ''}</div>
+                        <div class="order-total">${totalPrice.toFixed(2)}</div>
+                    </div>
+
+                    <div class="books-preview">
+                        <strong>Books:</strong> ${booksPreview}
+                    </div>
+                </div>
+            `;
+        });
+
+        container.innerHTML = html;
+    }
+
+    function showError(message) {
+        document.getElementById('loading-message').style.display = 'none';
+        document.getElementById('error-message').textContent = message;
+        document.getElementById('error-message').style.display = 'block';
+    }
+
+    function logout() {
+        const token = getAuthToken();
+
+        fetch('/api/users/logout', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + token,
+                'Content-Type': 'application/json'
+            }
+        })
+            .then(response => {
+                console.log('Logout response status:', response.status);
+            })
+            .catch(error => {
+                console.error('Logout API error:', error);
+            })
+            .finally(() => {
+                removeAuthToken();
+                alert('You have been logged out successfully.');
+                window.location.href = '/login';
+            });
+    }
+</script>
 </body>
 </html>

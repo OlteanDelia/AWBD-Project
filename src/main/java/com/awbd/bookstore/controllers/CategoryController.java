@@ -71,9 +71,9 @@ public class CategoryController {
 
     @GetMapping
     public List<CategoryDTO> getAllCategories() {
-        List<Category> categories = categoryService.getAllCategories();
+        List<CategoryDTO> categories = categoryService.getAllCategories();
         logger.info("Retrieved {} categories", categories.size());
-        return categoryMapper.toDtoList(categories);
+        return categories;
     }
 
     @PutMapping("/{id}")

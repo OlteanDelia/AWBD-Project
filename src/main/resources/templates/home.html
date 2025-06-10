@@ -174,7 +174,8 @@
     function loadCategories() {
         const token = localStorage.getItem('authToken');
 
-        fetch('/api/categories/all', {
+        // Fixed: Changed from '/api/categories/all' to '/api/categories'
+        fetch('/api/categories', {
             method: 'GET',
             headers: {
                 'Authorization': 'Bearer ' + token,

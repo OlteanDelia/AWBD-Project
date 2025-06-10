@@ -139,7 +139,6 @@
             margin-bottom: 1rem;
         }
 
-
         .book-stock {
             color: #28a745;
             font-weight: bold;
@@ -217,6 +216,38 @@
             border-radius: 8px;
         }
 
+        /* Alert styles for messages */
+        .alert {
+            padding: 0.75rem 1.25rem;
+            margin-bottom: 1rem;
+            border: 1px solid transparent;
+            border-radius: 0.25rem;
+            animation: slideDown 0.3s ease-out;
+        }
+
+        .alert-success {
+            color: #155724;
+            background-color: #d4edda;
+            border-color: #c3e6cb;
+        }
+
+        .alert-error {
+            color: #721c24;
+            background-color: #f8d7da;
+            border-color: #f5c6cb;
+        }
+
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
         @media (max-width: 768px) {
             .author-name {
                 font-size: 1.5rem;
@@ -246,14 +277,14 @@
         <a href="/login" id="login-link">Login</a>
         <a href="/register" id="register-link">Register</a>
         <a href="/home">Home</a>
-        <a>Profile</a>
-        <a>Cart</a>
-        <a>Wishlist</a>
-        <a>Order History</a>
+        <a href="/profile">Profile</a>
+        <a href="/cart">Cart</a>
+        <a href="/orders">Order History</a>
     </nav>
 </header>
 
 <main>
+    <div id="message-container"></div>
 
     <div id="loading-message">Loading author details...</div>
     <div id="error-message" style="display: none;">
@@ -285,11 +316,27 @@
     let booksData = [];
     let cartItems = {};
     let wishlistItems = {};
-    let userWishlistId = null;
 
     function getAuthorId() {
         const urlParams = new URLSearchParams(window.location.search);
         return urlParams.get('id') || urlParams.get('authorId');
+    }
+
+    function showMessage(message, type = 'error') {
+        const container = document.getElementById('message-container');
+        const messageDiv = document.createElement('div');
+        messageDiv.className = `alert alert-${type}`;
+        messageDiv.textContent = message;
+
+        container.innerHTML = '';
+        container.appendChild(messageDiv);
+
+        // Auto-hide after 5 seconds
+        setTimeout(() => {
+            if (container.contains(messageDiv)) {
+                container.removeChild(messageDiv);
+            }
+        }, 5000);
     }
 
     window.addEventListener('DOMContentLoaded', function () {
@@ -315,9 +362,10 @@
         const token = getAuthToken();
 
         if (!token) {
-            alert('Please log in to access this page.');
-            window.location.href = '/login';
-            return false;
+            showMessage('Please log in to access this page.', 'error');
+            // Uncomment these lines to enforce authentication
+            // window.location.href = '/login';
+            // return false;
         }
 
         document.getElementById('login-link').style.display = 'none';
@@ -328,7 +376,9 @@
     }
 
     function getAuthToken() {
-        return window.authToken || (typeof localStorage !== 'undefined' ? localStorage.getItem('authToken') : null) || 'simulated-auth-token-12345';
+        return window.authToken ||
+            (typeof localStorage !== 'undefined' ? localStorage.getItem('authToken') : null) ||
+            'simulated-auth-token-12345';
     }
 
     function setAuthToken(token) {
@@ -347,8 +397,10 @@
 
     function loadUserCartAndWishlist() {
         const token = getAuthToken();
+        console.log('Loading cart and wishlist with token:', token);
 
-        return fetch('/api/cart', {
+        // Load cart
+        const cartPromise = fetch('/api/cart', {
             method: 'GET',
             headers: {
                 'Authorization': 'Bearer ' + token,
@@ -356,33 +408,29 @@
             }
         })
             .then(response => {
+                console.log('Cart response status:', response.status);
                 if (!response.ok) {
                     throw new Error('Failed to fetch cart');
                 }
                 return response.json();
             })
             .then(cart => {
-                if (cart && cart.bookIds) {
-                    cartItems = {};
+                console.log('Cart data received:', cart);
+                cartItems = {};
+                if (cart && cart.bookIds && Array.isArray(cart.bookIds)) {
                     cart.bookIds.forEach(bookId => {
                         cartItems[bookId] = true;
                     });
                 }
+                console.log('Cart items loaded:', cartItems);
             })
             .catch(error => {
-                console.error('Error loading cart:', error.message);
-            })
-            .finally(() => {
-
-                loadWishlistItems();
+                console.error('Error loading cart:', error);
+                cartItems = {};
             });
-    }
 
-    function loadWishlistItems() {
-        const token = getAuthToken();
-        const wishlistId = 1;
-
-        return fetch(`/api/wishlists/${wishlistId}`, {
+        // Load wishlist using the correct endpoint
+        const wishlistPromise = fetch('/api/wishlists/user', {
             method: 'GET',
             headers: {
                 'Authorization': 'Bearer ' + token,
@@ -390,22 +438,29 @@
             }
         })
             .then(response => {
-                if (!response.ok) throw new Error('Failed to load wishlist');
+                console.log('Wishlist response status:', response.status);
+                if (!response.ok) {
+                    throw new Error('Failed to fetch wishlist');
+                }
                 return response.json();
             })
             .then(wishlistBooks => {
+                console.log('Wishlist data received:', wishlistBooks);
                 wishlistItems = {};
                 if (Array.isArray(wishlistBooks)) {
                     wishlistBooks.forEach(book => {
                         wishlistItems[book.id] = true;
                     });
                 }
+                console.log('Wishlist items loaded:', wishlistItems);
             })
             .catch(error => {
-                console.error('Error loading wishlist:', error.message);
+                console.error('Error loading wishlist:', error);
+                wishlistItems = {};
             });
-    }
 
+        return Promise.all([cartPromise, wishlistPromise]);
+    }
 
     function loadAuthorDetails(authorId) {
         const token = getAuthToken();
@@ -419,9 +474,9 @@
         })
             .then(response => {
                 if (response.status === 401 || response.status === 403) {
-                    alert('Your session has expired. Please log in again.');
+                    showMessage('Your session has expired. Please log in again.', 'error');
                     removeAuthToken();
-                    window.location.href = '/login';
+                    setTimeout(() => window.location.href = '/login', 2000);
                     return;
                 }
                 if (!response.ok) {
@@ -431,6 +486,7 @@
             })
             .then(author => {
                 if (!author) return;
+                console.log("author:", author);
                 authorData = author;
                 displayAuthorDetails(author);
             })
@@ -453,15 +509,16 @@
         })
             .then(response => {
                 if (response.status === 401 || response.status === 403) {
-                    alert('Your session has expired. Please log in again.');
+                    showMessage('Your session has expired. Please log in again.', 'error');
                     removeAuthToken();
-                    window.location.href = '/login';
+                    setTimeout(() => window.location.href = '/login', 2000);
                     return;
                 }
                 return response.json();
             })
             .then(books => {
                 booksData = Array.isArray(books) ? books : [];
+                console.log('Books data:', booksData);
                 displayAuthorBooks(booksData);
             })
             .catch(() => {
@@ -481,6 +538,10 @@
     }
 
     function displayAuthorBooks(books) {
+        console.log("Displaying books:", books);
+        console.log("Current cart items:", cartItems);
+        console.log("Current wishlist items:", wishlistItems);
+
         const booksList = document.getElementById('books-list');
         const noBooksMessage = document.getElementById('no-books-message');
 
@@ -494,8 +555,10 @@
 
         books.forEach(book => {
             const isInStock = book.stock > 0;
-            const isInCart = cartItems[book.id];
-            const isInWishlist = wishlistItems[book.id];
+            const isInCart = cartItems[book.id] === true;
+            const isInWishlist = wishlistItems[book.id] === true;
+
+            console.log(`Book ${book.id}: isInCart=${isInCart}, isInWishlist=${isInWishlist}`);
 
             const listItem = document.createElement('li');
             listItem.innerHTML = `
@@ -513,7 +576,7 @@
                     </button>
                     <button class="${isInWishlist ? 'btn btn-warning' : 'btn btn-secondary'}"
                             onclick="addToWishlist(${book.id})"
-        ${isInWishlist ? 'disabled' : ''}>
+                            ${isInWishlist ? 'disabled' : ''}>
                         ${isInWishlist ? 'In Wishlist' : 'Add to Wishlist'}
                     </button>
                 </div>
@@ -526,18 +589,21 @@
         const token = getAuthToken();
 
         if (!token) {
-            alert('Please log in to add books to cart.');
+            showMessage('Please log in to add books to cart.', 'error');
             return;
         }
 
         if (cartItems[bookId]) {
-            alert('This book is already in your cart!');
+            showMessage('This book is already in your cart!', 'error');
             return;
         }
 
         const button = event.target;
+        const originalText = button.textContent;
         button.disabled = true;
         button.textContent = 'Adding...';
+
+        console.log(`Adding book ${bookId} to cart`);
 
         fetch(`/api/cart/${bookId}`, {
             method: 'POST',
@@ -547,60 +613,129 @@
             }
         })
             .then(response => {
-                if (response.status === 401 || response.status === 403) {
-                    alert('Your session has expired. Please log in again.');
-                    removeAuthToken();
-                    window.location.href = '/login';
-                    return;
-                }
-                if (!response.ok) throw new Error('Failed to add to cart');
+                console.log('Add to cart response status:', response.status);
 
-                cartItems[bookId] = true;
-                button.classList.remove('btn-primary');
-                button.classList.add('btn-success');
-                button.textContent = 'Already in Cart';
+                if (response.status === 401 || response.status === 403) {
+                    showMessage('Your session has expired. Please log in again.', 'error');
+                    removeAuthToken();
+                    setTimeout(() => window.location.href = '/login', 2000);
+                    return Promise.reject('Authentication failed');
+                }
+
+                if (response.status === 409) {
+                    return response.json().then(errorData => {
+                        console.log('Book already in cart:', errorData);
+                        cartItems[bookId] = true;
+                        button.classList.remove('btn-primary');
+                        button.classList.add('btn-success');
+                        button.textContent = 'Already in Cart';
+                        button.disabled = true;
+                        return Promise.reject('Book already in cart');
+                    });
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to add to cart');
+                }
+
+                return response.json();
+            })
+            .then(updatedCart => {
+                if (updatedCart) {
+                    console.log('Book added successfully, updated cart:', updatedCart);
+                    cartItems[bookId] = true;
+                    button.classList.remove('btn-primary');
+                    button.classList.add('btn-success');
+                    button.textContent = 'Already in Cart';
+                    button.disabled = true;
+                    showMessage('Book added to cart successfully!', 'success');
+                }
             })
             .catch(error => {
-                alert('Error adding to cart: ' + error.message);
-                button.disabled = false;
-                button.textContent = 'Add to Cart';
+                console.error('Error adding to cart:', error);
+                if (error !== 'Book already in cart' && error !== 'Authentication failed') {
+                    showMessage('Error adding to cart: ' + error.message, 'error');
+                    button.disabled = false;
+                    button.textContent = originalText;
+                }
             });
     }
 
     function addToWishlist(bookId) {
         const token = getAuthToken();
-        const wishlistId = 1;
+
         if (!token) {
-            alert('Please log in to add books to wishlist.');
+            showMessage('Please log in to add books to wishlist.', 'error');
+            return;
+        }
+
+        if (wishlistItems[bookId]) {
+            showMessage('This book is already in your wishlist!', 'error');
             return;
         }
 
         const button = event.target;
+        const originalText = button.textContent;
         button.disabled = true;
         button.textContent = 'Adding...';
 
-        fetch(`/api/wishlists/${wishlistId}/${bookId}`, {
+        console.log(`Adding book ${bookId} to wishlist`);
+
+        // Use the correct endpoint from your WishlistController: POST /api/wishlists/{bookId}
+        fetch(`/api/wishlists/${bookId}`, {
             method: 'POST',
             headers: {
                 'Authorization': 'Bearer ' + token,
                 'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ bookId: bookId })
+            }
         })
             .then(response => {
-                if (!response.ok) throw new Error('Failed to add to wishlist');
-                wishlistItems[bookId] = true;
-                button.classList.remove('btn-secondary');
-                button.classList.add('btn-warning');
-                button.textContent = 'In Wishlist';
+                console.log('Add to wishlist response status:', response.status);
+
+                if (response.status === 401 || response.status === 403) {
+                    showMessage('Your session has expired. Please log in again.', 'error');
+                    removeAuthToken();
+                    setTimeout(() => window.location.href = '/login', 2000);
+                    return Promise.reject('Authentication failed');
+                }
+
+                if (response.status === 409) {
+                    // Book already in wishlist
+                    wishlistItems[bookId] = true;
+                    button.classList.remove('btn-secondary');
+                    button.classList.add('btn-warning');
+                    button.textContent = 'In Wishlist';
+                    button.disabled = true;
+                    showMessage('Book is already in your wishlist!', 'error');
+                    return Promise.reject('Book already in wishlist');
+                }
+
+                if (!response.ok) {
+                    throw new Error('Failed to add to wishlist');
+                }
+
+                return response.json();
+            })
+            .then(addedBook => {
+                if (addedBook) {
+                    console.log('Book added to wishlist successfully:', addedBook);
+                    wishlistItems[bookId] = true;
+                    button.classList.remove('btn-secondary');
+                    button.classList.add('btn-warning');
+                    button.textContent = 'In Wishlist';
+                    button.disabled = true;
+                    showMessage('Book added to wishlist successfully!', 'success');
+                }
             })
             .catch(error => {
-                alert('Error adding to wishlist: ' + error.message);
-                button.disabled = false;
-                button.textContent = 'Add to Wishlist';
+                console.error('Error adding to wishlist:', error);
+                if (error !== 'Book already in wishlist' && error !== 'Authentication failed') {
+                    showMessage('Error adding to wishlist: ' + error.message, 'error');
+                    button.disabled = false;
+                    button.textContent = originalText;
+                }
             });
     }
-
 
     function logout() {
         removeAuthToken();

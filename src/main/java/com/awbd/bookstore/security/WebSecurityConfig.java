@@ -31,19 +31,13 @@ public class WebSecurityConfig {
         http
                 .csrf(csrf -> csrf.disable())
                 .authorizeHttpRequests(auth -> auth
-
-                        .requestMatchers("/api/users/register", "/api/users/login").permitAll()
-
-                        // enpoints care au nevoie de autentificare
+                        .requestMatchers(
+                                "/welcome", "/login", "/register","/home","/category","/author","/profile","/cart","/wishlist","/order","/book","/orderhistory",
+                                "/api/users/register", "/api/users/login",
+                                "/css/**", "/js/**", "/images/**"
+                        ).permitAll()
                         .requestMatchers("/api/users/**").authenticated()
 
-                        // rol admin
-                        .requestMatchers(
-                                "/api/categories/**",
-                                "/api/sales/**"
-                        ).hasRole("ADMIN")
-
-                        // restul necesita autentificare
                         .anyRequest().authenticated()
                 )
                 .sessionManagement(session -> session

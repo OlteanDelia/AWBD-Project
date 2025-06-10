@@ -35,15 +35,12 @@
     function submitForm(event) {
         event.preventDefault();
 
-
         document.getElementById("errorMessage").style.display = "none";
-
 
         var formData = {
             username: document.getElementById("username").value,
             password: document.getElementById("password").value
         };
-
 
         fetch('/api/users/login', {
             method: 'POST',
@@ -62,16 +59,17 @@
             .then(data => {
                 console.log('Login successful, received data:', data);
 
-
                 localStorage.setItem('authToken', data.token);
 
-                console.log('About to redirect to /home');
-
-
+                // Role-based redirect logic
                 if (data.role === 'ADMIN') {
+                    console.log('Redirecting admin to /admin-home');
                     window.location.href = '/admin-home';
+                } else if (data.role === 'USER') {
+                    console.log('Redirecting user to /home');
+                    window.location.href = '/home';
                 } else {
-
+                    console.log('Unknown role, redirecting to /home');
                     window.location.href = '/home';
                 }
             })

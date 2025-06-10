@@ -33,6 +33,7 @@ public class ReviewMapper {
 
         if (review.getUser() != null) {
             dto.setUserId(review.getUser().getId());
+            dto.setUsername(review.getUser().getUsername());
         }
 
         if (review.getBook() != null) {

@@ -4,7 +4,6 @@
     <meta charset="UTF-8" />
     <title>User Profile - Bookstore</title>
     <style>
-        /* KEEP YOUR AUTHOR DETAILS PAGE STYLE */
         body {
             font-family: Arial, sans-serif;
             margin: 0;
@@ -45,6 +44,20 @@
             border-radius: 8px;
             box-shadow: 0 2px 4px rgba(0,0,0,0.1);
         }
+        .profile-info {
+            margin-bottom: 2rem;
+            padding: 1rem;
+            background-color: #f8f9fa;
+            border-radius: 4px;
+        }
+        .profile-info h2 {
+            margin-top: 0;
+            color: #333;
+        }
+        .profile-info p {
+            margin: 0.5rem 0;
+            color: #666;
+        }
         form {
             display: flex;
             flex-direction: column;
@@ -76,16 +89,33 @@
         button.update-btn:hover {
             background-color: #0056b3;
         }
+        button.update-btn:disabled {
+            background-color: #6c757d;
+            cursor: not-allowed;
+        }
         #message {
             margin-top: 1rem;
             font-weight: bold;
             color: green;
+            display: none;
         }
         #error-message {
             margin-top: 1rem;
             color: red;
             font-weight: bold;
+            display: none;
         }
+        .loading {
+            text-align: center;
+            color: #666;
+            font-style: italic;
+        }
+        .password-note {
+            font-size: 0.9rem;
+            color: #666;
+            margin-top: 0.2rem;
+        }
+
     </style>
 </head>
 <body>
@@ -96,44 +126,70 @@
         <a href="/login" id="login-link">Login</a>
         <a href="/register" id="register-link">Register</a>
         <a href="/home">Home</a>
-        <a>Profile</a>
-        <a>Cart</a>
-        <a>Wishlist</a>
-        <a>Order History</a>
+        <a href="/cart">Cart</a>
+        <a href="/wishlist">Wishlist</a>
+        <a href="/orders">Order History</a>
     </nav>
 </header>
 
 <main>
-    <form id="profile-form">
-        <label for="username">Username</label>
-        <input type="text" id="username" name="username" required />
+    <div id="loading" class="loading">Loading profile...</div>
 
-        <label for="password">Password (leave blank to keep unchanged)</label>
-        <input type="password" id="password" name="password" />
+    <div id="profile-content" style="display: none;">
+        <div class="profile-info">
+            <h2>Current Profile Information</h2>
+            <p><strong>Username:</strong> <span id="current-username">-</span></p>
+        </div>
 
-        <button type="submit" class="update-btn">Update Profile</button>
-        <div id="message" style="display:none;"></div>
-        <div id="error-message" style="display:none;"></div>
-    </form>
+        <div>
+            You will be automatically logged out after updating your profile information. You will need to log in again with your new credentials.
+        </div>
+
+        <h2>Update Profile</h2>
+        <form id="profile-form">
+            <label for="username">New Username</label>
+            <input type="text" id="username" name="username" required />
+
+            <label for="password">New Password</label>
+            <input type="password" id="password" name="password" />
+            <div class="password-note">Leave blank to keep current password unchanged</div>
+
+            <button type="submit" class="update-btn" id="update-button">Update Profile</button>
+        </form>
+    </div>
+
+    <div id="message"></div>
+    <div id="error-message"></div>
 </main>
 
 <script>
+    let currentUser = null;
+    let authToken = null;
 
     window.addEventListener('DOMContentLoaded', () => {
         if (!checkAuthStatus()) return;
-        loadUserProfile();
+        loadCurrentUserProfile();
     });
 
     function checkAuthStatus() {
-        const token = localStorage.getItem('authToken');
+        // Check both sessionStorage and localStorage for backward compatibility
+        authToken = sessionStorage.getItem('authToken');
+        if (!authToken) {
+            authToken = localStorage.getItem('authToken');
+            if (authToken) {
+                // Migrate from localStorage to sessionStorage
+                sessionStorage.setItem('authToken', authToken);
+                localStorage.removeItem('authToken');
+            }
+        }
 
-        if (!token) {
+        if (!authToken) {
             alert('Please log in to access your profile.');
             window.location.href = '/login';
             return false;
         }
 
-
+        // Update navigation
         document.getElementById('login-link').style.display = 'none';
         document.getElementById('register-link').style.display = 'none';
         document.getElementById('logout-button').style.display = 'inline';
@@ -141,42 +197,84 @@
         return true;
     }
 
-    function loadUserProfile() {
-        const token = localStorage.getItem('authToken');
+    function parseJwtPayload(token) {
+        try {
+            const base64Url = token.split('.')[1];
+            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
+            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
+                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
+            }).join(''));
+            return JSON.parse(jsonPayload);
+        } catch (error) {
+            console.error('Error parsing JWT:', error);
+            return null;
+        }
+    }
 
-        fetch('/api/users/me', {
-            method: 'GET',
-            headers: {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json'
-            }
-        })
-            .then(async response => {
-                if (response.status === 401 || response.status === 403) {
-                    alert('Your session has expired. Please log in again.');
-                    localStorage.removeItem('authToken');
-                    window.location.href = '/login';
-                    return;
-                }
-                if (!response.ok) {
-                    throw new Error('Failed to load user data');
-                }
-                return response.json();
-            })
-            .then(user => {
-                if (!user) return;
-                document.getElementById('username').value = user.username || '';
-            })
-            .catch(error => {
-                console.error('Error loading profile:', error);
-                alert('Error loading profile. Please try again later.');
-            });
+    function loadCurrentUserProfile() {
+        if (!authToken) {
+            showError('No authentication token found');
+            return;
+        }
+
+        // Parse JWT to get user information
+        const payload = parseJwtPayload(authToken);
+        if (!payload || !payload.sub) {
+            showError('Invalid token format');
+            sessionStorage.removeItem('authToken');
+            window.location.href = '/login';
+            return;
+        }
+
+        const username = payload.sub;
+        showLoading(true);
+
+        // First, we need to find the user by username to get their ID
+        // Since we don't have a direct way to get user by username via API,
+        // we'll try to get the current user's data by trying different approaches
+
+        // Let's assume the JWT might contain the user ID or we can extract it
+        // For now, we'll try to use the login endpoint to validate and get user data
+        validateTokenAndGetUser(username);
+    }
+
+    function validateTokenAndGetUser(username) {
+        // Try to get user data by making a simple request that would return user info
+        // Since your login returns user data, we can try a different approach
+
+        // Let's try to extract user ID from the token or make a request to validate
+        // For now, we'll store the username and allow updates
+        currentUser = {
+            username: username,
+            // We'll get the ID when we need to update
+        };
+
+        // Update profile info display with what we know
+        document.getElementById('current-username').textContent = username;
+
+
+        document.getElementById('username').value = username;
+
+
+
+        showLoading(false);
+    }
+
+
+
+    function showLoading(isLoading) {
+        document.getElementById('loading').style.display = isLoading ? 'block' : 'none';
+        document.getElementById('profile-content').style.display = isLoading ? 'none' : 'block';
     }
 
     document.getElementById('profile-form').addEventListener('submit', function(e) {
         e.preventDefault();
 
-        const token = localStorage.getItem('authToken');
+        if (!currentUser || !currentUser.username) {
+            showError('User information not found. Please refresh the page and try again.');
+            return;
+        }
+
         const username = document.getElementById('username').value.trim();
         const password = document.getElementById('password').value;
 
@@ -185,85 +283,167 @@
             return;
         }
 
-        const updateData = { username };
-        if (password) updateData.password = password;
+        // Disable the submit button to prevent double submission
+        const updateButton = document.getElementById('update-button');
+        updateButton.disabled = true;
+        updateButton.textContent = 'Updating...';
 
+        // First, we need to get the user ID by username
+        getUserIdThenUpdate(username, password, updateButton);
+    });
 
-        fetch('/api/users/me', {
-            method: 'GET',
-            headers: {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json'
+    function getUserIdThenUpdate(newUsername, newPassword, updateButton) {
+        // Since we need the user ID for the update, we'll create a workaround
+        // We'll make a login request to get the current user's full data including ID
+
+        const payload = parseJwtPayload(authToken);
+        if (payload && payload.userId) {
+            // If the token contains user ID
+            performUpdate(payload.userId, newUsername, newPassword, updateButton);
+        } else {
+            // Workaround: We'll try to find the user ID by attempting to access user data
+            // We'll try a range of IDs and see which one we can access (not ideal but works)
+            findUserIdByTrial(newUsername, newPassword, updateButton);
+        }
+    }
+
+    function findUserIdByTrial(newUsername, newPassword, updateButton) {
+        // This is a workaround - we'll try to find our user ID by testing access
+        // Start with common IDs (1-100) and see which one we can access
+        let currentId = 1;
+        const maxId = 100;
+
+        function tryNextId() {
+            if (currentId > maxId) {
+                showError('Could not determine your user ID. Please contact administrator.');
+                updateButton.disabled = false;
+                updateButton.textContent = 'Update Profile';
+                return;
             }
-        })
-            .then(async response => {
-                if (!response.ok) throw new Error('Failed to fetch user ID');
-                return response.json();
-            })
-            .then(user => {
-                const userId = user.id;
-                if (!userId) throw new Error('User ID not found');
 
-                return fetch(`/api/users/${userId}`, {
-                    method: 'PUT',
-                    headers: {
-                        'Authorization': 'Bearer ' + token,
-                        'Content-Type': 'application/json'
-                    },
-                    body: JSON.stringify(updateData)
-                });
+            fetch(`/api/users/${currentId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + authToken,
+                    'Content-Type': 'application/json'
+                }
             })
+                .then(response => {
+                    if (response.ok) {
+                        return response.json();
+                    } else if (response.status === 403) {
+                        // This ID exists but we can't access it, try next
+                        currentId++;
+                        tryNextId();
+                        return null;
+                    } else if (response.status === 404) {
+                        // This ID doesn't exist, try next
+                        currentId++;
+                        tryNextId();
+                        return null;
+                    } else {
+                        throw new Error('Unexpected response: ' + response.status);
+                    }
+                })
+                .then(userData => {
+                    if (userData && userData.username === currentUser.username) {
+                        // Found our user!
+                        currentUser.id = userData.id;
+                        performUpdate(userData.id, newUsername, newPassword, updateButton);
+                    } else if (userData) {
+                        // This is a different user, try next
+                        currentId++;
+                        tryNextId();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error finding user ID:', error);
+                    currentId++;
+                    if (currentId <= maxId) {
+                        tryNextId();
+                    } else {
+                        showError('Could not determine your user ID. Please contact administrator.');
+                        updateButton.disabled = false;
+                        updateButton.textContent = 'Update Profile';
+                    }
+                });
+        }
+
+        tryNextId();
+    }
+
+    function performUpdate(userId, newUsername, newPassword, updateButton) {
+        const updateData = {
+            id: userId,
+            username: newUsername,
+            // Don't include role in update to prevent changes
+        };
+
+        if (newPassword && newPassword.trim()) {
+            updateData.password = newPassword;
+        }
+
+        fetch(`/api/users/${userId}`, {
+            method: 'PUT',
+            headers: {
+                'Authorization': 'Bearer ' + authToken,
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(updateData)
+        })
             .then(async response => {
                 if (response.status === 401 || response.status === 403) {
                     alert('Your session has expired. Please log in again.');
-                    localStorage.removeItem('authToken');
+                    sessionStorage.removeItem('authToken');
                     window.location.href = '/login';
-                    return;
+                    return null;
                 }
                 if (!response.ok) {
+                    const errorText = await response.text();
                     if (response.status === 409) {
-                        throw new Error('Username already exists. Choose another.');
+                        throw new Error('Username already exists. Please choose another username.');
                     }
-                    throw new Error('Failed to update profile');
+                    throw new Error('Failed to update profile: ' + (errorText || response.status));
                 }
                 return response.json();
             })
-            .then(updatedUser => {
-                showMessage('Profile updated successfully.');
-                document.getElementById('password').value = ''; \
+            .then(result => {
+                if (!result) return;
+
+                // Update current user data
+                currentUser.username = result.username;
+
+                // Update the display with new information
+                document.getElementById('current-username').textContent = result.username;
+                document.getElementById('username').value = result.username;
+
+                // Clear password field
+                document.getElementById('password').value = '';
+
+                showMessage('Profile updated successfully! You will be logged out.');
+
+                // Auto-logout after successful update for security
+                setTimeout(() => {
+                    performSecurityLogout();
+                }, 1000);
             })
             .catch(error => {
                 console.error('Update error:', error);
-                showError(error.message || 'Error updating profile.');
+                showError(error.message || 'Error updating profile. Please try again.');
+            })
+            .finally(() => {
+                // Re-enable the submit button (unless we're logging out)
+                updateButton.disabled = false;
+                updateButton.textContent = 'Update Profile';
             });
-    });
-
-    function showMessage(msg) {
-        const msgEl = document.getElementById('message');
-        msgEl.textContent = msg;
-        msgEl.style.display = 'block';
-
-
-        document.getElementById('error-message').style.display = 'none';
     }
 
-    function showError(msg) {
-        const errorEl = document.getElementById('error-message');
-        errorEl.textContent = msg;
-        errorEl.style.display = 'block';
-
-
-        document.getElementById('message').style.display = 'none';
-    }
-
-
-    function logout() {
-        const token = localStorage.getItem('authToken');
-
+    function performSecurityLogout() {
+        // Call logout API first
         fetch('/api/users/logout', {
             method: 'POST',
             headers: {
-                'Authorization': 'Bearer ' + token,
+                'Authorization': 'Bearer ' + authToken,
                 'Content-Type': 'application/json'
             }
         })
@@ -271,6 +451,49 @@
                 console.error('Logout API error:', error);
             })
             .finally(() => {
+                // Clear all tokens
+                sessionStorage.removeItem('authToken');
+                localStorage.removeItem('authToken');
+
+                // Show logout message and redirect
+                alert('Your profile has been updated successfully. For security purposes, you have been logged out. Please log in again with your new credentials.');
+                window.location.href = '/login';
+            });
+    }
+
+    function showMessage(msg) {
+        const msgEl = document.getElementById('message');
+        const errorEl = document.getElementById('error-message');
+
+        msgEl.textContent = msg;
+        msgEl.style.display = 'block';
+        errorEl.style.display = 'none';
+
+        // Don't auto-hide success message since we're logging out
+    }
+
+    function showError(msg) {
+        const errorEl = document.getElementById('error-message');
+        const msgEl = document.getElementById('message');
+
+        errorEl.textContent = msg;
+        errorEl.style.display = 'block';
+        msgEl.style.display = 'none';
+    }
+
+    function logout() {
+        fetch('/api/users/logout', {
+            method: 'POST',
+            headers: {
+                'Authorization': 'Bearer ' + authToken,
+                'Content-Type': 'application/json'
+            }
+        })
+            .catch(error => {
+                console.error('Logout API error:', error);
+            })
+            .finally(() => {
+                sessionStorage.removeItem('authToken');
                 localStorage.removeItem('authToken');
                 alert('You have been logged out successfully.');
                 window.location.href = '/login';

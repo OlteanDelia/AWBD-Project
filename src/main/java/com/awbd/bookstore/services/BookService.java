@@ -3,6 +3,7 @@ package com.awbd.bookstore.services;
 import com.awbd.bookstore.DTOs.BookDTO;
 import com.awbd.bookstore.models.Book;
 import com.awbd.bookstore.repositories.BookRepository;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.stereotype.Service;
 
 import java.util.List;
@@ -53,6 +54,11 @@ public class BookService {
                         book.getAuthor().getName()
                 ))
                 .collect(Collectors.toList());
+    }
+
+    public Book getBookById(Long id) {
+        return bookRepository.findById(id)
+                .orElseThrow(() -> new EntityNotFoundException("Book not found with id: " + id));
     }
 
 
