@@ -37,6 +37,7 @@ public class BookMapper {
 
         if (book.getAuthor() != null) {
             dto.setAuthorId(book.getAuthor().getId());
+            dto.setAuthor(book.getAuthor().getName());
         }
 
         return dto;

@@ -27,7 +27,7 @@ public class BookDTO {
         this.authorId = authorId;
     }
 
-    public void setAuthor(String author) {
-        this.authorId = Long.parseLong(author);
-    }
+//    public void setAuthor(String author) {
+//        this.authorId = Long.parseLong(author);
+//    }
 }

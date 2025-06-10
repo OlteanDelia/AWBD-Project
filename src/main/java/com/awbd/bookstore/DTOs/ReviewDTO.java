@@ -17,11 +17,12 @@ public class ReviewDTO {
 
     private Long userId;
     private Long bookId;
+    private String username;
 
     public ReviewDTO(String content, int rating, Long userId, Long bookId) {
         this.content = content;
         this.rating = rating;
-
+        this.username = username;
         this.userId = userId;
         this.bookId = bookId;
     }

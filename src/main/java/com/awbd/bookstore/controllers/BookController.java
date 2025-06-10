@@ -5,6 +5,7 @@ import com.awbd.bookstore.annotations.RequireAdmin;
 import com.awbd.bookstore.mappers.BookMapper;
 import com.awbd.bookstore.models.Book;
 import com.awbd.bookstore.services.BookService;
+import jakarta.persistence.EntityNotFoundException;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -75,5 +76,22 @@ public class BookController {
         List<Book> books = bookService.getBookBycategoryId(categoryId);
         logger.info("Fetched books by category ID: {}", categoryId);
         return ResponseEntity.ok(bookMapper.toDtoList(books));
+    }
+
+    @GetMapping("/byauthor/{authorId}")
+    public List<BookDTO> getBooksByAuthorId(@PathVariable Long authorId) {
+        return bookService.getBooksByAuthorId(authorId);
+    }
+
+    @GetMapping("/{id}")
+    public ResponseEntity<BookDTO> getBookById(@PathVariable Long id) {
+        try {
+            Book book = bookService.getBookById(id);
+            logger.info("Fetched book with id: {}", id);
+            return ResponseEntity.ok(bookMapper.toDto(book));
+        } catch (EntityNotFoundException e) {
+            logger.warn("Book not found with id: {}", id);
+            return ResponseEntity.notFound().build();
+        }
     }
 }
