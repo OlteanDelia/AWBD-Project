@@ -15,6 +15,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
+import java.util.Optional;
 
 @Service
 public class CartService {
@@ -31,8 +32,8 @@ public class CartService {
         this.saleService = saleService;
     }
 
-    public Cart getCartByUserId(Long userId) {
-        Cart cart = cartRepository.findByUserId(userId);
+    public Optional<Cart> getCartByUserId(Long userId) {
+        Optional<Cart> cart = cartRepository.findByUserId(userId);
         if (cart == null) {
             throw new CartNotFoundException("Cart not found for user with ID " + userId);
         }

@@ -1,5 +1,6 @@
 package com.awbd.bookstore.DTOs;
 
+
 import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
@@ -26,13 +27,7 @@ public class BookDTO {
         this.authorId = authorId;
     }
 
-
-    public BookDTO(String title, double price, int stock, Long categoryId, Long authorId, String author) {
-        this.title = title;
-        this.price = price;
-        this.stock = stock;
-        this.categoryId = categoryId;
-        this.authorId = authorId;
-        this.author = author;
+    public void setAuthor(String author) {
+        this.authorId = Long.parseLong(author);
     }
 }

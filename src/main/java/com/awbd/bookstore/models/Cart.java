@@ -40,4 +40,11 @@ public class Cart {
     public void removeBook(Book book){
         books.remove(book);
     }
+
+    public void setUserId(long l) {
+        if (this.user == null) {
+            this.user = new User();
+        }
+        this.user.setId(l);
+    }
 }

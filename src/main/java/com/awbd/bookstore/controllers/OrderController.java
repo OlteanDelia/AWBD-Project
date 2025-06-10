@@ -62,15 +62,14 @@ public class OrderController {
 
         Cart cart = cartService.getCartByUserId(user.getId())
                 .orElseThrow(() -> new RuntimeException("Cart not found for user: " + user.getId()));
-
         if (cart.getBooks().isEmpty()) {
             throw new IllegalStateException("Cart is empty");
         }
 
+
         List<Long> bookIds = cart.getBooks().stream()
                 .map(Book::getId)
                 .collect(Collectors.toList());
-
 
         Long saleId = (request != null) ? request.getSaleId() : null;
         Order order = orderService.createOrder(user.getId(), bookIds, saleId);
