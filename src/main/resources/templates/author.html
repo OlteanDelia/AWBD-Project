@@ -116,12 +116,18 @@
             padding: 1.5rem;
             transition: all 0.3s;
             height: fit-content;
+            cursor: pointer;
+            position: relative;
         }
 
         #books-list li:hover {
             background-color: #e9e9e9;
             transform: translateY(-2px);
             box-shadow: 0 4px 8px rgba(0,0,0,0.1);
+        }
+
+        .book-content {
+            pointer-events: none;
         }
 
         .book-title {
@@ -153,6 +159,7 @@
             display: flex;
             gap: 0.5rem;
             margin-top: 1rem;
+            pointer-events: all;
         }
 
         .btn {
@@ -214,6 +221,23 @@
             padding: 2rem;
             background-color: #f8f9fa;
             border-radius: 8px;
+        }
+
+        .click-hint {
+            position: absolute;
+            top: 10px;
+            right: 10px;
+            background-color: rgba(0, 123, 255, 0.1);
+            color: #007bff;
+            padding: 0.25rem 0.5rem;
+            border-radius: 4px;
+            font-size: 0.8rem;
+            opacity: 0;
+            transition: opacity 0.3s;
+        }
+
+        #books-list li:hover .click-hint {
+            opacity: 1;
         }
 
         /* Alert styles for messages */
@@ -561,31 +585,40 @@
             console.log(`Book ${book.id}: isInCart=${isInCart}, isInWishlist=${isInWishlist}`);
 
             const listItem = document.createElement('li');
+            listItem.onclick = () => redirectToBookPage(book.id);
             listItem.innerHTML = `
-                <div class="book-title">${book.title || 'Untitled'}</div>
-                <div class="book-price">$${book.price ? book.price.toFixed(2) : '0.00'}</div>
-                <div class="${isInStock ? 'book-stock' : 'book-stock out-of-stock'}">
-                    ${isInStock ? `In Stock (${book.stock})` : 'Out of Stock'}
-                </div>
+                <div class="click-hint">Click to view details</div>
+                <div class="book-content">
+                    <div class="book-title">${book.title || 'Untitled'}</div>
+                    <div class="book-price">$${book.price ? book.price.toFixed(2) : '0.00'}</div>
+                    <div class="${isInStock ? 'book-stock' : 'book-stock out-of-stock'}">
+                        ${isInStock ? `In Stock (${book.stock})` : 'Out of Stock'}
+                    </div>
 
-                <div class="book-actions">
-                    <button class="${isInCart ? 'btn btn-success' : 'btn btn-primary'}"
-                            onclick="addToCart(${book.id})"
-                            ${(!isInStock || isInCart) ? 'disabled' : ''}>
-                        ${isInCart ? 'Already in Cart' : 'Add to Cart'}
-                    </button>
-                    <button class="${isInWishlist ? 'btn btn-warning' : 'btn btn-secondary'}"
-                            onclick="addToWishlist(${book.id})"
-                            ${isInWishlist ? 'disabled' : ''}>
-                        ${isInWishlist ? 'In Wishlist' : 'Add to Wishlist'}
-                    </button>
+                    <div class="book-actions">
+                        <button class="${isInCart ? 'btn btn-success' : 'btn btn-primary'}"
+                                onclick="addToCart(${book.id}, event)"
+                                ${(!isInStock || isInCart) ? 'disabled' : ''}>
+                            ${isInCart ? 'Already in Cart' : 'Add to Cart'}
+                        </button>
+                        <button class="${isInWishlist ? 'btn btn-warning' : 'btn btn-secondary'}"
+                                onclick="addToWishlist(${book.id}, event)"
+                                ${isInWishlist ? 'disabled' : ''}>
+                            ${isInWishlist ? 'In Wishlist' : 'Add to Wishlist'}
+                        </button>
+                    </div>
                 </div>
             `;
             booksList.appendChild(listItem);
         });
     }
 
-    function addToCart(bookId) {
+    function redirectToBookPage(bookId) {
+        window.location.href = `/book?id=${bookId}`;
+    }
+
+    function addToCart(bookId, event) {
+        event.stopPropagation(); // Prevent the book click event
         const token = getAuthToken();
 
         if (!token) {
@@ -661,7 +694,8 @@
             });
     }
 
-    function addToWishlist(bookId) {
+    function addToWishlist(bookId, event) {
+        event.stopPropagation(); // Prevent the book click event
         const token = getAuthToken();
 
         if (!token) {

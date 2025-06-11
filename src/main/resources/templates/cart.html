@@ -243,8 +243,6 @@
             Your cart is empty.
         </div>
 
-
-
         <div id="cart-summary" style="display: none;">
             <div id="total-price">Total: $0.00</div>
             <div id="potential-savings" style="display: none;"></div>
@@ -291,6 +289,33 @@
         document.getElementById('logout-button').style.display = 'inline';
 
         return true;
+    }
+
+    // Helper function to safely parse JSON responses
+    async function safeJsonParse(response) {
+        const text = await response.text();
+
+        // Handle empty responses
+        if (!text || text.trim() === '') {
+            return null;
+        }
+
+        // Handle "null" string responses
+        if (text.trim().toLowerCase() === 'null') {
+            return null;
+        }
+
+        // Handle "Null return" or similar messages
+        if (text.includes('Null return') || text.includes('null return')) {
+            return null;
+        }
+
+        try {
+            return JSON.parse(text);
+        } catch (e) {
+            console.warn('Failed to parse JSON response:', text);
+            return null;
+        }
     }
 
     function loadCart() {
@@ -345,30 +370,37 @@
                     return;
                 }
 
-                // Get books
+                // Get books with safe JSON parsing
                 let books = [];
                 if (booksResponse.ok) {
-                    books = await booksResponse.json();
+                    const booksData = await safeJsonParse(booksResponse);
+                    books = booksData || [];
                 } else if (booksResponse.status === 404 || booksResponse.status === 204) {
                     books = [];
                 } else {
                     throw new Error('Failed to load cart books: ' + booksResponse.status);
                 }
 
-                // Get total
+                // Get total with safe JSON parsing
                 let total = 0;
                 if (totalResponse.ok) {
-                    total = await totalResponse.json();
+                    const totalData = await safeJsonParse(totalResponse);
+                    total = totalData || 0;
+                    // Handle case where backend returns null for total
+                    if (total === null || isNaN(total)) {
+                        total = 0;
+                    }
                 } else if (totalResponse.status === 404 || totalResponse.status === 204) {
                     total = 0;
                 } else {
                     throw new Error('Failed to load cart total: ' + totalResponse.status);
                 }
 
-                // Get sales (non-critical)
+                // Get sales (non-critical) with safe JSON parsing
                 let sales = [];
                 if (salesResponse.ok) {
-                    sales = await salesResponse.json();
+                    const salesData = await safeJsonParse(salesResponse);
+                    sales = salesData || [];
                 }
 
                 return { books, total, sales };
@@ -410,9 +442,9 @@
                 'Content-Type': 'application/json'
             }
         })
-            .then(response => {
+            .then(async response => {
                 if (response.ok) {
-                    return response.json();
+                    return await safeJsonParse(response);
                 }
                 console.log('Sales not available or error loading sales');
                 return [];
@@ -443,6 +475,8 @@
         let maxSavings = 0;
 
         availableSales.forEach(sale => {
+            // Only consider sales that haven't been used yet
+            // (availableSales from /api/sales/active should only return unused sales)
             const savings = calculatePotentialSavings(sale);
             if (savings > maxSavings) {
                 maxSavings = savings;
@@ -521,7 +555,7 @@
                 displayTotal = total - savings;
                 potentialSavingsElement.innerHTML = `
                     🎉 <strong>${bestSale.discountPercentage}% discount</strong> applied!<br>
-                    You save <strong>${savings.toFixed(2)}</strong>
+                    You save <strong>$${savings.toFixed(2)}</strong>
                 `;
                 potentialSavingsElement.style.display = 'block';
             } else {
@@ -532,7 +566,7 @@
         }
 
         // Show cart summary with final price
-        totalPriceElement.textContent = `Total: ${displayTotal.toFixed(2)}`;
+        totalPriceElement.textContent = `Total: $${displayTotal.toFixed(2)}`;
         cartSummary.style.display = 'block';
 
         // Display books with sale indicators
@@ -554,7 +588,7 @@
                             ${bestSale.discountPercentage}% discount will apply!
                         </div>` : ''}
                     </div>
-                    <div class="book-price">${book.price.toFixed(2)}</div>
+                    <div class="book-price">$${book.price.toFixed(2)}</div>
                     <button class="remove-button" onclick="removeFromCart(${book.id})" id="remove-btn-${book.id}">
                         Remove
                     </button>
@@ -620,6 +654,17 @@
         checkoutButton.textContent = 'Creating Order...';
 
         console.log('Creating order with cart data:', cartData);
+        console.log('Best sale to apply:', bestSale);
+
+        // Prepare request body with sale information if available
+        let requestBody = {};
+        if (bestSale && bestSale.id) {
+            requestBody.saleId = bestSale.id;
+            console.log('Including sale ID in order request:', bestSale.id);
+        } else {
+            console.log('No sale to apply - creating order without sale');
+        }
+        requestBody = JSON.stringify(requestBody);
 
         // Create the order using your existing backend endpoint
         fetch('/api/orders', {
@@ -627,7 +672,8 @@
             headers: {
                 'Authorization': 'Bearer ' + token,
                 'Content-Type': 'application/json'
-            }
+            },
+            body: requestBody
         })
             .then(response => {
                 console.log('Order creation response status:', response.status);
@@ -646,16 +692,13 @@
                     });
                 }
 
-                return response.json();
+                return safeJsonParse(response);
             })
             .then(orderData => {
                 console.log('Order created successfully:', orderData);
 
-                // If we have a best sale, apply it to the order
-                if (bestSale && orderData.id) {
-                    return applySaleToOrder(orderData.id, bestSale.id, token);
-                }
-
+                // Order creation is complete, including sale application if applicable
+                // The backend handles sale application during order creation
                 return orderData;
             })
             .then(() => {
@@ -672,30 +715,8 @@
             });
     }
 
-    function applySaleToOrder(orderId, saleId, token) {
-        console.log(`Applying sale ${saleId} to order ${orderId}`);
-
-        return fetch(`/api/orders/${orderId}/apply-sale`, {
-            method: 'POST',
-            headers: {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json'
-            },
-            body: JSON.stringify({ saleId: saleId })
-        })
-            .then(response => {
-                if (!response.ok) {
-                    console.warn('Failed to apply sale, but order was created successfully');
-                    return; // Don't fail the entire process if sale application fails
-                }
-                console.log('Sale applied successfully');
-                return response.json();
-            })
-            .catch(error => {
-                console.warn('Error applying sale:', error);
-                // Don't throw error - order was still created successfully
-            });
-    }
+    // Note: applySaleToOrder function is no longer needed since the backend
+    // handles sale application during order creation via the OrderRequestDTO
 
     function logout() {
         const token = localStorage.getItem('authToken');

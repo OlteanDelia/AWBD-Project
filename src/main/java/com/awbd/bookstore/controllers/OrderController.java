@@ -51,33 +51,87 @@ public class OrderController {
             @RequestHeader("Authorization") String authHeader,
             @RequestBody(required = false) OrderRequestDTO request) {
 
-        if (!authHeader.startsWith("Bearer ")) {
+        logger.info("=== ORDER CREATION STARTED ===");
+
+        // Validate auth header
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            logger.error("Invalid authorization header");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
+
+        // Extract username from token
         String token = authHeader.substring(7);
         String username = jwtUtil.getUsernameFromToken(token);
+        if (username == null) {
+            logger.error("Invalid token - could not extract username");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+        logger.info("Username from token: {}", username);
 
+        // Find user
         User user = userService.findByUsername(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found: " + username));
+        logger.info("User found: {} (ID: {})", user.getUsername(), user.getId());
 
+        // Find cart
         Cart cart = cartService.getCartByUserId(user.getId())
                 .orElseThrow(() -> new RuntimeException("Cart not found for user: " + user.getId()));
-        if (cart.getBooks().isEmpty()) {
-            throw new IllegalStateException("Cart is empty");
+        logger.info("Cart found: ID {}", cart.getId());
+
+        // Get books in cart
+        List<Book> booksInCart = cartService.getBooksInCart(cart.getId());
+        logger.info("Books in cart: {}", booksInCart.size());
+
+        if (booksInCart.isEmpty()) {
+            logger.error("Cart is empty for user: {}", username);
+            return ResponseEntity.badRequest().build();
         }
 
-        List<Long> bookIds = cart.getBooks().stream()
+        // Extract book IDs
+        List<Long> bookIds = booksInCart.stream()
                 .map(Book::getId)
                 .collect(Collectors.toList());
+        logger.info("Book IDs: {}", bookIds);
 
+        // Get sale ID
+        Long saleId = null;
+        if (request != null && request.getSaleId() != null) {
+            saleId = request.getSaleId();
+            logger.info("Sale ID from request: {}", saleId);
+        } else {
+            logger.info("No sale ID in request, proceeding without sale");
+        }
+        logger.info("Sale ID: {}", saleId);
 
-        Long saleId = (request != null) ? request.getSaleId() : null;
-        Order order = orderService.createOrder(user.getId(), bookIds, saleId);
+        try {
+            // Create order
+            logger.info("About to call orderService.createOrder with userId: {}, bookIds: {}, saleId: {}",
+                    user.getId(), bookIds, saleId);
+            Order order = orderService.createOrder(user.getId(), bookIds, saleId);
+            logger.info("Order created successfully: ID {}", order.getId());
 
-        cartService.clearCart(cart.getId());
-        logger.info("Order created successfully for user: {}", username);
+            // Clear cart
+            logger.info("About to clear cart with ID: {}", cart.getId());
+            cartService.clearCart(cart.getId());
+            logger.info("Cart cleared for user: {}", username);
 
-        return ResponseEntity.ok(orderMapper.toDto(order));
+            // Return order DTO
+            logger.info("About to map order to DTO");
+            OrderDTO orderDTO = orderMapper.toDto(order);
+            logger.info("Order creation completed successfully");
+            return ResponseEntity.ok(orderDTO);
+
+        } catch (Exception e) {
+            logger.error("=== DETAILED ERROR INFO ===");
+            logger.error("Error class: {}", e.getClass().getName());
+            logger.error("Error message: {}", e.getMessage());
+            logger.error("Error cause: {}", e.getCause() != null ? e.getCause().toString() : "No cause");
+            logger.error("Full stack trace:", e);
+
+            // Re-throw the exception to let global exception handler deal with it
+            // Or return a generic error response
+            throw new RuntimeException("Order creation failed: " + e.getMessage(), e);
+        }
     }
     @GetMapping("/history")
     public ResponseEntity<List<OrderDTO>> getUserOrderHistory(

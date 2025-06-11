@@ -34,6 +34,9 @@ public class OrderMapper {
                 .collect(Collectors.toSet()));
         dto.setOrderDate(order.getOrderDate());
         dto.setTotalPrice(order.getTotalPrice());
+        if (order.getSale() != null) {
+            dto.setSaleId(order.getSale().getId());
+        }
         return dto;
     }
 

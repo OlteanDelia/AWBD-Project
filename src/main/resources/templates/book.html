@@ -289,6 +289,7 @@
             resize: vertical;
             font-family: Arial, sans-serif;
             min-height: 80px;
+            box-sizing: border-box;
         }
 
         #review-content:focus {
@@ -384,7 +385,6 @@
 
 <main>
     <div id="message-container"></div>
-
 
     <div id="loading-message">Loading book details...</div>
     <div id="error-message" style="display: none;">
@@ -948,7 +948,6 @@
                                 </div>
                             </div>
                         </div>
-
                     </div>
                     <div class="review-content">${review.content || 'No content'}</div>
                 </div>
@@ -967,11 +966,17 @@
             return;
         }
 
-        const rating = document.getElementById('selected-rating').value;
+        const rating = parseInt(document.getElementById('selected-rating').value);
         const content = document.getElementById('review-content').value.trim();
 
-        if (!content) {
-            showMessage('Please write a review before submitting.', 'error');
+        // Validate rating
+        if (!rating || rating < 1 || rating > 5) {
+            showMessage('Please select a valid rating (1-5 stars).', 'error');
+            return;
+        }
+
+        if (!content || content.length < 3) {
+            showMessage('Please write a review with at least 3 characters.', 'error');
             return;
         }
 
@@ -980,10 +985,10 @@
         button.disabled = true;
         button.textContent = 'Submitting...';
 
+        // Create the review data object - only send content and rating
         const reviewData = {
             content: content,
-            rating: parseInt(rating),
-            createdAt: new Date().toISOString().split('T')[0]
+            rating: rating
         };
 
         console.log('Submitting review:', reviewData);
@@ -1008,37 +1013,46 @@
                 }
 
                 if (response.status === 201 || response.status === 200) {
-                    // Success - don't try to parse potentially malformed JSON
+                    // Success - review created
                     console.log('Review submission successful');
-                    return { success: true };
+                    return response.json().catch(() => ({ success: true }));
                 }
 
+                // Handle error responses
                 if (!response.ok) {
                     return response.text().then(text => {
-                        console.error('Review submission failed:', text);
-                        throw new Error('Failed to submit review: ' + text);
+                        console.error('Review submission failed with status:', response.status);
+                        console.error('Error response body:', text);
+
+                        // Try to parse error as JSON for better error messages
+                        try {
+                            const errorJson = JSON.parse(text);
+                            if (errorJson.message) {
+                                throw new Error(errorJson.message);
+                            }
+                        } catch (parseError) {
+                            // If not JSON, use the raw text
+                        }
+
+                        throw new Error(`Server error (${response.status}): ${text}`);
                     });
                 }
 
-                // Try to parse JSON, but handle errors gracefully
-                return response.text().then(text => {
-                    try {
-                        return JSON.parse(text);
-                    } catch (jsonError) {
-                        console.log('JSON parse error but submission likely successful:', jsonError);
-                        return { success: true };
-                    }
-                });
+                // Try to parse JSON response
+                return response.json();
             })
             .then(result => {
                 console.log('Review submission result:', result);
                 if (result) {
-                    showMessage('Review submitted successfully! Page will refresh...', 'success');
+                    showMessage('Review submitted successfully!', 'success');
 
-                    // Refresh the entire page after successful submission
-                    setTimeout(() => {
-                        window.location.reload();
-                    }, 1500);
+                    // Clear the form
+                    document.getElementById('review-content').value = '';
+                    document.getElementById('selected-rating').value = '5';
+                    updateStarDisplay(5);
+
+                    // Reload reviews
+                    loadReviews(currentBook.id);
                 }
             })
             .catch(error => {
@@ -1046,6 +1060,8 @@
                 if (error !== 'Authentication failed') {
                     showMessage('Error submitting review: ' + error.message, 'error');
                 }
+            })
+            .finally(() => {
                 button.disabled = false;
                 button.textContent = originalText;
             });

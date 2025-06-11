@@ -36,6 +36,7 @@ public class Sale {
 
     private Boolean isActive = true;
 
+
     @ManyToMany
     @JoinTable(
             name = "sale_category",

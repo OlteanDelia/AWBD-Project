@@ -10,10 +10,13 @@ import com.awbd.bookstore.repositories.BookRepository;
 import com.awbd.bookstore.repositories.OrderRepository;
 import com.awbd.bookstore.repositories.UserRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.HashSet;
 import java.util.List;
 import java.util.Set;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 
 @Service
 public class OrderService {
@@ -29,9 +32,12 @@ public class OrderService {
         this.bookRepository = bookRepository;
         this.saleService = saleService;
     }
+    private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
-
+    @Transactional
     public Order createOrder(Long userId, List<Long> bookIds, Long saleId) {
+        logger.info("Creating order for user: {}, books: {}, sale: {}", userId, bookIds, saleId);
+
         User user = userRepository.findById(userId)
                 .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found"));
 
@@ -47,41 +53,67 @@ public class OrderService {
             order.addBook(book);
         });
 
+        Sale sale = null;
+
+        // Handle sale application (completely optional)
         if (saleId != null) {
-            Sale sale = saleService.getById(saleId);
-            if (sale == null) {
-                throw new SaleNotFoundException("Sale with ID " + saleId + " not found");
+            try {
+                sale = saleService.getById(saleId);
+                if (sale != null && sale.getIsActive()) {
+                    order.setSale(sale);
+                    logger.info("Applied sale: {} to order", sale.getSaleCode());
+                } else {
+                    logger.warn("Sale with ID {} is not active, proceeding without discount", saleId);
+                    sale = null;
+                }
+            } catch (SaleNotFoundException e) {
+                logger.warn("Sale with ID {} not found, proceeding without discount", saleId);
+                sale = null;
             }
-            order.setSale(sale);
+        } else {
+            logger.info("No sale ID provided, creating order without discount");
         }
 
         double totalPrice = 0.0;
-        // calculate price
-        if (saleId == null){
+
+        // Calculate total price
+        if (sale == null) {
+            // No sale - regular pricing
             totalPrice = order.getBooks().stream()
                     .mapToDouble(Book::getPrice)
                     .sum();
-            order.setTotalPrice(totalPrice);
+            logger.info("Order total without discount: ${}", totalPrice);
         } else {
-            Sale sale = saleService.getById(saleId);
-
+            // Sale applied - calculate with discount
             double percentage = sale.getDiscountPercentage();
             List<Category> saleCategories = sale.getCategories();
 
             for (Book book : order.getBooks()) {
                 if (saleCategories.contains(book.getCategory())) {
                     totalPrice += book.getPrice() * (1 - percentage / 100);
+                    logger.debug("Applied {}% discount to book: {}", percentage, book.getTitle());
                 } else {
                     totalPrice += book.getPrice();
                 }
             }
+            logger.info("Order total with discount: ${}", totalPrice);
         }
 
         order.setTotalPrice(totalPrice);
 
+        // Save the order
+        Order savedOrder = orderRepository.save(order);
+        logger.info("Order saved with ID: {}", savedOrder.getId());
 
+        // DEACTIVATE THE SALE AFTER SUCCESSFUL ORDER CREATION
+        if (sale != null) {
+            logger.info("Deactivating sale: {}", sale.getSaleCode());
+            sale.setIsActive(false);
+            saleService.update(sale.getId(), sale, null);
+            logger.info("Sale {} has been deactivated", sale.getSaleCode());
+        }
 
-        return orderRepository.save(order);
+        return savedOrder;
     }
 
     public List<Order> getUserOrderHistory(User user) {

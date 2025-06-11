@@ -12,12 +12,15 @@ import com.awbd.bookstore.models.User;
 import com.awbd.bookstore.services.CartService;
 import com.awbd.bookstore.services.UserService;
 import com.awbd.bookstore.utils.JwtUtil;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.Optional;
 
 @RestController
@@ -122,5 +125,51 @@ public class CartController {
         logger.info("Total price for cart with ID {}: {}", cart.getId(), totalPrice);
 
         return ResponseEntity.ok(totalPrice);
+    }
+
+    @DeleteMapping("/remove/{bookId}")
+    public ResponseEntity<?> removeBookFromCart(
+            @PathVariable Long bookId,
+            @RequestHeader("Authorization") String authHeader) {
+
+        try {
+            if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+                logger.error("Missing or invalid authorization header");
+                throw new InvalidTokenException("Missing or invalid authorization header");
+            }
+
+            String token = authHeader.substring(7);
+            String username = jwtUtil.getUsernameFromToken(token);
+
+            if (username == null) {
+                logger.error("Invalid token");
+                throw new InvalidTokenException("Invalid token");
+            }
+
+            User user = userService.findByUsername(username)
+                    .orElseThrow(() -> new UserNotFoundException("User not found: " + username));
+
+            Cart cart = cartService.getCartByUserId(user.getId()).get();
+            cartService.removeBookFromCart(cart.getId(), bookId);
+            logger.info("Book with ID {} removed from cart with ID {}", bookId, cart.getId());
+
+            Map<String, String> response = new HashMap<>();
+            response.put("message", "Book removed from cart successfully");
+            return ResponseEntity.ok(response);
+
+        } catch (InvalidTokenException | UserNotFoundException e) {
+            logger.error("Authentication error: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Authentication failed");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).body(errorResponse);
+
+        } catch (Exception e) {
+            logger.error("Error removing book from cart: {}", e.getMessage());
+            Map<String, String> errorResponse = new HashMap<>();
+            errorResponse.put("error", "Failed to remove book from cart");
+            errorResponse.put("message", e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).body(errorResponse);
+        }
     }
 }

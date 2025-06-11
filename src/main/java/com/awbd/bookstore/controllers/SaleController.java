@@ -62,8 +62,8 @@ public class SaleController {
 
     @GetMapping("/active")
     public List<SaleDTO> getActiveSales() {
-        List<Sale> sales = saleService.getAllActiveSales();
-        sales = saleService.getAllWithStatusCheck(sales);
+        // This now returns active sales (which automatically excludes used/inactive ones)
+        List<Sale> sales = saleService.getAllActiveSalesWithStatusCheck();
         logger.info("Retrieved {} active sales", sales.size());
         return saleMapper.toDtoList(sales);
     }

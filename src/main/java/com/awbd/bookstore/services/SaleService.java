@@ -142,4 +142,6 @@ public class SaleService {
         // Apoi returnează doar cele active
         return saleRepository.findAllActiveSales();
     }
+
+    
 }

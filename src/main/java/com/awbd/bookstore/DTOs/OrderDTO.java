@@ -17,6 +17,7 @@ public class OrderDTO {
     private Set<Long> bookIds;
     private LocalDateTime orderDate;
     private Double totalPrice;
+    private Long saleId;
 
 
     public OrderDTO(Long userId, Set<Long> bookIds, Double totalPrice) {
@@ -24,5 +25,13 @@ public class OrderDTO {
         this.bookIds = bookIds;
         this.orderDate = LocalDateTime.now();
         this.totalPrice = totalPrice;
+    }
+
+    public OrderDTO(Long userId, Set<Long> bookIds, Double totalPrice, Long saleId) {
+        this.userId = userId;
+        this.bookIds = bookIds;
+        this.orderDate = LocalDateTime.now();
+        this.totalPrice = totalPrice;
+        this.saleId = saleId;
     }
 }
