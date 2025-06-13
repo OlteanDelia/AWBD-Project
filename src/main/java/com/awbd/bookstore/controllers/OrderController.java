@@ -2,7 +2,6 @@ package com.awbd.bookstore.controllers;
 
 import com.awbd.bookstore.DTOs.OrderRequestDTO;
 import com.awbd.bookstore.DTOs.OrderDTO;
-import com.awbd.bookstore.DTOs.OrderRequestDTO;
 import com.awbd.bookstore.annotations.RequireAdmin;
 import com.awbd.bookstore.exceptions.user.UserNotFoundException;
 import com.awbd.bookstore.mappers.OrderMapper;
@@ -31,7 +30,6 @@ public class OrderController {
     private final OrderMapper orderMapper;
     private static final Logger logger = LoggerFactory.getLogger(OrderController.class);
 
-
     @Autowired
     public OrderController(OrderService orderService,
                            JwtUtil jwtUtil,
@@ -44,7 +42,6 @@ public class OrderController {
         this.cartService = cartService;
         this.orderMapper = orderMapper;
     }
-
 
     @PostMapping
     public ResponseEntity<OrderDTO> createOrder(
@@ -94,7 +91,6 @@ public class OrderController {
         } else {
             logger.info("No sale ID in request, proceeding without sale");
         }
-        logger.info("Sale ID: {}", saleId);
 
         try {
             logger.info("About to call orderService.createOrder with userId: {}, bookIds: {}, saleId: {}",
@@ -121,6 +117,78 @@ public class OrderController {
             throw new RuntimeException("Order creation failed: " + e.getMessage(), e);
         }
     }
+
+    @PostMapping("/no-sale")
+    public ResponseEntity<OrderDTO> createOrderWithoutSale(
+            @RequestHeader("Authorization") String authHeader) {
+
+        logger.info("=== ORDER CREATION WITHOUT SALE STARTED ===");
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            logger.error("Invalid authorization header");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        String token = authHeader.substring(7);
+        String username = jwtUtil.getUsernameFromToken(token);
+        if (username == null) {
+            logger.error("Invalid token - could not extract username");
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        User user = userService.findByUsername(username)
+                .orElseThrow(() -> new UserNotFoundException("User not found: " + username));
+
+        Cart cart = cartService.getCartByUserId(user.getId())
+                .orElseThrow(() -> new RuntimeException("Cart not found for user: " + user.getId()));
+
+        List<Book> booksInCart = cartService.getBooksInCart(cart.getId());
+        if (booksInCart.isEmpty()) {
+            logger.error("Cart is empty for user: {}", username);
+            return ResponseEntity.badRequest().build();
+        }
+
+        List<Long> bookIds = booksInCart.stream()
+                .map(Book::getId)
+                .collect(Collectors.toList());
+
+        try {
+            Order order = orderService.createOrderWithoutSale(user.getId(), bookIds);
+            logger.info("Order created without sale: ID {}", order.getId());
+
+            cartService.clearCart(cart.getId());
+            logger.info("Cart cleared for user: {}", username);
+
+            OrderDTO orderDTO = orderMapper.toDto(order);
+            return ResponseEntity.ok(orderDTO);
+
+        } catch (Exception e) {
+            logger.error("Error creating order without sale:", e);
+            throw new RuntimeException("Order creation failed: " + e.getMessage(), e);
+        }
+    }
+
+    @PostMapping("/{id}/calculate-total")
+    public ResponseEntity<Double> calculateOrderTotal(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader) {
+
+        logger.info("Calculating total for order: {}", id);
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
+        try {
+            double total = orderService.calculateTotalPrice(id);
+            logger.info("Calculated total for order {}: ${}", id, total);
+            return ResponseEntity.ok(total);
+        } catch (Exception e) {
+            logger.error("Error calculating order total for order {}: {}", id, e.getMessage());
+            return ResponseEntity.status(HttpStatus.INTERNAL_SERVER_ERROR).build();
+        }
+    }
+
     @GetMapping("/history")
     public ResponseEntity<List<OrderDTO>> getUserOrderHistory(
             @RequestHeader("Authorization") String authHeader) {
@@ -140,7 +208,6 @@ public class OrderController {
         logger.info("Order history retrieved successfully for user: {}", username);
         return ResponseEntity.ok(orderMapper.toDtoList(orders));
     }
-
 
     @GetMapping
     @RequireAdmin
@@ -171,12 +238,17 @@ public class OrderController {
     }
 
     @GetMapping("/{id}")
-    @RequireAdmin
-    public ResponseEntity<OrderDTO> getOrderById(@PathVariable Long id) {
+    public ResponseEntity<OrderDTO> getOrderById(
+            @PathVariable Long id,
+            @RequestHeader("Authorization") String authHeader) {
+
+        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
+
         Order order = orderService.getOrderById(id);
         OrderDTO orderDTO = orderMapper.toDto(order);
         logger.info("Retrieved order with ID: {}", id);
         return ResponseEntity.ok(orderDTO);
     }
-
 }

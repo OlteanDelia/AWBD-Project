@@ -24,13 +24,15 @@ public class OrderService {
     private UserRepository userRepository;
     private BookRepository bookRepository;
     private SaleService saleService;
+    private BookService bookService;
 
     public OrderService(OrderRepository orderRepository, UserRepository userRepository,
-                        BookRepository bookRepository, SaleService saleService) {
+                        BookRepository bookRepository, SaleService saleService, BookService bookService) {
         this.orderRepository = orderRepository;
         this.userRepository = userRepository;
         this.bookRepository = bookRepository;
         this.saleService = saleService;
+        this.bookService = bookService;
     }
     private static final Logger logger = LoggerFactory.getLogger(OrderService.class);
 
@@ -47,17 +49,24 @@ public class OrderService {
 
         Order order = new Order(user);
 
-        bookIds.forEach(bookId -> {
+        for (Long bookId : bookIds) {
             Book book = bookRepository.findById(bookId)
                     .orElseThrow(() -> new BookNotFoundException("Book with ID " + bookId + " not found"));
+
+            if (!bookService.hasInStock(bookId, 1)) {
+                int currentStock = bookService.getCurrentStock(bookId);
+                logger.error("Insufficient stock for book '{}': current stock = {}", book.getTitle(), currentStock);
+                throw new RuntimeException("Book '" + book.getTitle() + "' is out of stock (current stock: " + currentStock + ")");
+            }
+
             order.addBook(book);
-        });
+            logger.debug("Added book to order: {} (Current stock: {})", book.getTitle(), book.getStock());
+        }
 
         Sale sale = null;
-
         if (saleId != null) {
             try {
-                sale = saleService.getById(saleId);
+                sale = saleService.getByIdWithStatusCheck(saleId);
                 if (sale != null && sale.getIsActive()) {
                     order.setSale(sale);
                     logger.info("Applied sale: {} to order", sale.getSaleCode());
@@ -73,41 +82,91 @@ public class OrderService {
             logger.info("No sale ID provided, creating order without discount");
         }
 
-        double totalPrice = 0.0;
-
-        if (sale == null) {
-            totalPrice = order.getBooks().stream()
-                    .mapToDouble(Book::getPrice)
-                    .sum();
-            logger.info("Order total without discount: ${}", totalPrice);
-        } else {
-            double percentage = sale.getDiscountPercentage();
-            List<Category> saleCategories = sale.getCategories();
-
-            for (Book book : order.getBooks()) {
-                if (saleCategories.contains(book.getCategory())) {
-                    totalPrice += book.getPrice() * (1 - percentage / 100);
-                    logger.debug("Applied {}% discount to book: {}", percentage, book.getTitle());
-                } else {
-                    totalPrice += book.getPrice();
-                }
-            }
-            logger.info("Order total with discount: ${}", totalPrice);
-        }
-
+        double totalPrice = calculateOrderTotal(order.getBooks(), sale);
         order.setTotalPrice(totalPrice);
 
         Order savedOrder = orderRepository.save(order);
-        logger.info("Order saved with ID: {}", savedOrder.getId());
+        logger.info("Order saved with ID: {} and total price: ${}", savedOrder.getId(), totalPrice);
+
+        updateBookStockAfterOrder(savedOrder.getBooks());
 
         if (sale != null) {
-            logger.info("Deactivating sale: {}", sale.getSaleCode());
+            logger.info("Deactivating sale: {} after successful order", sale.getSaleCode());
             sale.setIsActive(false);
             saleService.update(sale.getId(), sale, null);
             logger.info("Sale {} has been deactivated", sale.getSaleCode());
         }
 
         return savedOrder;
+    }
+
+    private double calculateOrderTotal(Set<Book> books, Sale sale) {
+        double totalPrice = 0.0;
+
+        if (sale == null) {
+            totalPrice = books.stream()
+                    .mapToDouble(Book::getPrice)
+                    .sum();
+            logger.info("Order total without discount: ${}", totalPrice);
+        } else {
+            double discountPercentage = sale.getDiscountPercentage();
+            List<Category> saleCategories = sale.getCategories();
+
+            for (Book book : books) {
+                double bookPrice = book.getPrice();
+                if (saleCategories.contains(book.getCategory())) {
+                    double discountedPrice = bookPrice * (1 - discountPercentage / 100);
+                    totalPrice += discountedPrice;
+                    logger.debug("Applied {}% discount to book: {} (${} -> ${})",
+                            discountPercentage, book.getTitle(), bookPrice, discountedPrice);
+                } else {
+                    totalPrice += bookPrice;
+                    logger.debug("No discount applied to book: {} (${})", book.getTitle(), bookPrice);
+                }
+            }
+            logger.info("Order total with discount: ${}", totalPrice);
+        }
+
+        return totalPrice;
+    }
+
+
+    private void updateBookStockAfterOrder(Set<Book> books) {
+        for (Book book : books) {
+            try {
+                int currentStock = bookService.getCurrentStock(book.getId());
+                logger.debug("Current stock for book '{}': {}", book.getTitle(), currentStock);
+
+                bookService.decreaseBookStock(book.getId(), 1);
+                logger.info("Successfully decreased stock for book '{}' by 1", book.getTitle());
+
+            } catch (Exception e) {
+                logger.error("Failed to update stock for book '{}': {}", book.getTitle(), e.getMessage());
+                throw new RuntimeException("Failed to update stock for book: " + book.getTitle(), e);
+            }
+        }
+        logger.info("Stock updates completed for all {} books in order", books.size());
+    }
+
+
+    @Transactional
+    public Order createOrderWithoutSale(Long userId, List<Long> bookIds) {
+        return createOrder(userId, bookIds, null);
+    }
+
+
+    @Transactional
+    public double calculateTotalPrice(Long orderId) {
+        Order order = getOrderById(orderId);
+        Sale sale = order.getSale();
+
+        double newTotal = calculateOrderTotal(order.getBooks(), sale);
+
+        order.setTotalPrice(newTotal);
+        orderRepository.save(order);
+
+        logger.info("Recalculated total for order {}: ${}", orderId, newTotal);
+        return newTotal;
     }
 
     public List<Order> getUserOrderHistory(User user) {
@@ -148,6 +207,9 @@ public class OrderService {
         }
         order.setBooks(books);
 
+        double newTotal = calculateOrderTotal(order.getBooks(), order.getSale());
+        order.setTotalPrice(newTotal);
+
         return orderRepository.save(order);
     }
 
@@ -158,6 +220,4 @@ public class OrderService {
         orderRepository.deleteById(orderId);
         logger.info("Order with ID {} deleted successfully", orderId);
     }
-
-
 }

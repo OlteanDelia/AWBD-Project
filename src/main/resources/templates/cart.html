@@ -80,16 +80,6 @@
             text-align: center;
         }
 
-        #best-sale {
-            background-color: #fff3cd;
-            border: 1px solid #ffeaa7;
-            border-radius: 4px;
-            padding: 0.75rem;
-            margin: 1rem 0;
-            color: #856404;
-            font-weight: bold;
-        }
-
         #total-price {
             font-size: 1.8rem;
             font-weight: bold;
@@ -107,7 +97,15 @@
             font-weight: bold;
         }
 
-        #checkout-button {
+        .checkout-options {
+            display: flex;
+            gap: 1rem;
+            justify-content: center;
+            flex-wrap: wrap;
+            margin-top: 1rem;
+        }
+
+        .checkout-button {
             background-color: #28a745;
             color: white;
             border: none;
@@ -115,16 +113,61 @@
             font-size: 1.1rem;
             border-radius: 6px;
             cursor: pointer;
-            margin-right: 1rem;
+            transition: background-color 0.3s;
         }
 
-        #checkout-button:hover {
+        .checkout-button:hover {
             background-color: #218838;
         }
 
-        #checkout-button:disabled {
+        .checkout-button:disabled {
             background-color: #6c757d;
             cursor: not-allowed;
+        }
+
+        .checkout-button.secondary {
+            background-color: #6c757d;
+            margin-left: 0.5rem;
+        }
+
+        .checkout-button.secondary:hover {
+            background-color: #5a6268;
+        }
+
+        .sale-choice {
+            background-color: #e8f5e8;
+            border: 2px solid #28a745;
+            border-radius: 8px;
+            padding: 1rem;
+            margin: 1rem 0;
+        }
+
+        .sale-choice h4 {
+            margin: 0 0 0.5rem 0;
+            color: #155724;
+        }
+
+        .sale-option {
+            margin: 0.5rem 0;
+            padding: 0.5rem;
+            border: 1px solid #ddd;
+            border-radius: 4px;
+            background-color: white;
+        }
+
+        .sale-option input[type="radio"] {
+            margin-right: 0.5rem;
+        }
+
+        .sale-option label {
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+        }
+
+        .sale-option.selected {
+            background-color: #d4edda;
+            border-color: #28a745;
         }
 
         #books-list {
@@ -217,6 +260,28 @@
             margin: 1rem 0;
             text-align: center;
         }
+
+        #available-sales {
+            background-color: #f8f9fa;
+            border: 1px solid #dee2e6;
+            border-radius: 8px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .sale-item {
+            background-color: white;
+            border: 1px solid #dee2e6;
+            border-radius: 4px;
+            padding: 0.75rem;
+            margin: 0.5rem 0;
+        }
+
+        .sale-item.best-sale {
+            background-color: #fff3cd;
+            border-color: #ffeaa7;
+            font-weight: bold;
+        }
     </style>
 </head>
 <body>
@@ -246,7 +311,23 @@
         <div id="cart-summary" style="display: none;">
             <div id="total-price">Total: $0.00</div>
             <div id="potential-savings" style="display: none;"></div>
-            <button id="checkout-button" onclick="proceedToCheckout()">Proceed to Checkout</button>
+
+            <div id="sale-choice" class="sale-choice" style="display: none;">
+                <h4>🎉 Choose Your Checkout Option:</h4>
+                <div class="sale-option" id="no-sale-option">
+                    <label>
+                        <input type="radio" name="checkout-option" value="no-sale" checked>
+                        <span>Checkout without discount (Regular price)</span>
+                    </label>
+                </div>
+                <div id="sale-options"></div>
+            </div>
+
+            <div class="checkout-options">
+                <button id="checkout-button" class="checkout-button" onclick="proceedToCheckout()">
+                    Proceed to Checkout
+                </button>
+            </div>
         </div>
 
         <div id="available-sales" style="display: none;">
@@ -423,7 +504,7 @@
                 if (loadingElement) loadingElement.style.display = 'none';
 
                 displayCart(cartData, totalPrice);
-                displayAvailableSales();
+                displaySaleOptions();
             })
             .catch(error => {
                 console.error('Error loading cart:', error);
@@ -433,36 +514,6 @@
                     errorElement.textContent = 'Failed to load cart: ' + error.message;
                     errorElement.style.display = 'block';
                 }
-            });
-    }
-
-    function loadSalesData(token) {
-        fetch('/api/sales/active', {
-            method: 'GET',
-            headers: {
-                'Authorization': 'Bearer ' + token,
-                'Content-Type': 'application/json'
-            }
-        })
-            .then(async response => {
-                if (response.ok) {
-                    return await safeJsonParse(response);
-                }
-                console.log('Sales not available or error loading sales');
-                return [];
-            })
-            .then(sales => {
-                availableSales = sales || [];
-
-                bestSale = findBestApplicableSale();
-
-                displayCart(cartData, totalPrice);
-                displayBestSale();
-            })
-            .catch(error => {
-                console.log('Error loading sales (non-critical):', error);
-                availableSales = [];
-                bestSale = null;
             });
     }
 
@@ -498,40 +549,92 @@
         return savings;
     }
 
-    function displayAvailableSales() {
-        const salesContainer = document.getElementById('available-sales');
-        const salesList = document.getElementById('sales-list');
+    function displaySaleOptions() {
+        const saleChoiceContainer = document.getElementById('sale-choice');
+        const saleOptionsContainer = document.getElementById('sale-options');
 
         if (!availableSales || availableSales.length === 0) {
-            salesContainer.style.display = 'none';
+            saleChoiceContainer.style.display = 'none';
             return;
         }
 
-        let salesHtml = '';
-        availableSales.forEach(sale => {
-            const savings = calculatePotentialSavings(sale);
-            const isBest = bestSale && sale.id === bestSale.id;
-            const cssClass = isBest ? 'sale-item best-sale' : 'sale-item';
+        const applicableSales = availableSales.filter(sale => calculatePotentialSavings(sale) > 0);
 
-            salesHtml += `
-                <div class="${cssClass}">
-                    ${sale.discountPercentage}% off
-                    ${sale.description ? ` - ${sale.description}` : ''}
-                    ${savings > 0 ? ` (You save: ${savings.toFixed(2)})` : ' (Not applicable to your cart)'}
-                    ${isBest ? ' ⭐ BEST DEAL' : ''}
+        if (applicableSales.length === 0) {
+            saleChoiceContainer.style.display = 'none';
+            return;
+        }
+
+        saleChoiceContainer.style.display = 'block';
+
+        let saleOptionsHtml = '';
+        applicableSales.forEach(sale => {
+            const savings = calculatePotentialSavings(sale);
+            const discountedTotal = totalPrice - savings;
+            const isBest = bestSale && sale.id === bestSale.id;
+
+            saleOptionsHtml += `
+                <div class="sale-option ${isBest ? 'selected' : ''}" id="sale-option-${sale.id}">
+                    <label>
+                        <input type="radio" name="checkout-option" value="sale-${sale.id}" ${isBest ? 'checked' : ''}>
+                        <span>
+                            <strong>${sale.discountPercentage}% off</strong>
+                            ${sale.description ? `- ${sale.description}` : ''}
+                            <br>
+                            <small>You save: ${savings.toFixed(2)} | Total: ${discountedTotal.toFixed(2)}</small>
+                            ${isBest ? ' ⭐ <strong>BEST DEAL</strong>' : ''}
+                        </span>
+                    </label>
                 </div>
             `;
         });
 
-        salesList.innerHTML = salesHtml;
-        salesContainer.style.display = 'block';
+        saleOptionsContainer.innerHTML = saleOptionsHtml;
+
+        document.querySelectorAll('input[name="checkout-option"]').forEach(radio => {
+            radio.addEventListener('change', function() {
+                updateSaleSelection();
+            });
+        });
+    }
+
+    function updateSaleSelection() {
+        const selectedOption = document.querySelector('input[name="checkout-option"]:checked');
+        if (!selectedOption) return;
+
+        document.querySelectorAll('.sale-option').forEach(option => {
+            option.classList.remove('selected');
+        });
+
+        const selectedSaleOption = selectedOption.closest('.sale-option');
+        if (selectedSaleOption) {
+            selectedSaleOption.classList.add('selected');
+        }
+
+        updateTotalDisplay();
+    }
+
+    function updateTotalDisplay() {
+        const selectedOption = document.querySelector('input[name="checkout-option"]:checked');
+        const totalElement = document.getElementById('total-price');
+
+        if (selectedOption.value === 'no-sale') {
+            totalElement.textContent = `Total: ${totalPrice.toFixed(2)}`;
+        } else {
+            const saleId = selectedOption.value.replace('sale-', '');
+            const sale = availableSales.find(s => s.id == saleId);
+            if (sale) {
+                const savings = calculatePotentialSavings(sale);
+                const discountedTotal = totalPrice - savings;
+                totalElement.textContent = `Total: ${discountedTotal.toFixed(2)} (Save ${savings.toFixed(2)})`;
+            }
+        }
     }
 
     function displayCart(books, total) {
         const booksList = document.getElementById('books-list');
         const cartSummary = document.getElementById('cart-summary');
         const totalPriceElement = document.getElementById('total-price');
-        const potentialSavingsElement = document.getElementById('potential-savings');
 
         document.getElementById('loading-message').style.display = 'none';
         document.getElementById('error-message').style.display = 'none';
@@ -540,49 +643,21 @@
         if (!books || books.length === 0) {
             document.getElementById('empty-cart-message').style.display = 'block';
             cartSummary.style.display = 'none';
-            document.getElementById('available-sales').style.display = 'none';
             return;
         }
 
-        let displayTotal = total;
-        if (bestSale) {
-            const savings = calculatePotentialSavings(bestSale);
-            if (savings > 0) {
-                displayTotal = total - savings;
-                potentialSavingsElement.innerHTML = `
-                    🎉 <strong>${bestSale.discountPercentage}% discount</strong> applied!<br>
-                    You save <strong>$${savings.toFixed(2)}</strong>
-                `;
-                potentialSavingsElement.style.display = 'block';
-            } else {
-                potentialSavingsElement.style.display = 'none';
-            }
-        } else {
-            potentialSavingsElement.style.display = 'none';
-        }
-
-        totalPriceElement.textContent = `Total: $${displayTotal.toFixed(2)}`;
+        totalPriceElement.textContent = `Total: ${total.toFixed(2)}`;
         cartSummary.style.display = 'block';
 
         let html = '';
         books.forEach(book => {
-            const isDiscounted = bestSale && bestSale.categoryIds &&
-                bestSale.categoryIds.includes(book.categoryId);
-            const itemClass = isDiscounted ? 'discounted-book' : '';
-
             html += `
-                <li class="${itemClass}">
+                <li>
                     <div class="book-info">
-                        <div class="book-title">
-                            ${book.title}
-                            ${isDiscounted ? ' 🏷️' : ''}
-                        </div>
+                        <div class="book-title">${book.title}</div>
                         <div class="book-author">by ${book.authorName || book.author || 'Unknown Author'}</div>
-                        ${isDiscounted ? `<div style="color: #4caf50; font-weight: bold; font-size: 0.9rem;">
-                            ${bestSale.discountPercentage}% discount will apply!
-                        </div>` : ''}
                     </div>
-                    <div class="book-price">$${book.price.toFixed(2)}</div>
+                    <div class="book-price">${book.price.toFixed(2)}</div>
                     <button class="remove-button" onclick="removeFromCart(${book.id})" id="remove-btn-${book.id}">
                         Remove
                     </button>
@@ -637,23 +712,24 @@
         }
 
         const token = localStorage.getItem('authToken');
-
         const checkoutButton = document.getElementById('checkout-button');
         const originalText = checkoutButton.textContent;
+
         checkoutButton.disabled = true;
         checkoutButton.textContent = 'Creating Order...';
 
-        console.log('Creating order with cart data:', cartData);
-        console.log('Best sale to apply:', bestSale);
-
+        const selectedOption = document.querySelector('input[name="checkout-option"]:checked');
         let requestBody = {};
-        if (bestSale && bestSale.id) {
-            requestBody.saleId = bestSale.id;
-            console.log('Including sale ID in order request:', bestSale.id);
+
+        if (selectedOption && selectedOption.value !== 'no-sale') {
+            const saleId = selectedOption.value.replace('sale-', '');
+            requestBody.saleId = parseInt(saleId);
+            requestBody.applySale = true;
+            console.log('Checkout with sale ID:', saleId);
         } else {
-            console.log('No sale to apply - creating order without sale');
+            requestBody.applySale = false;
+            console.log('Checkout without sale');
         }
-        requestBody = JSON.stringify(requestBody);
 
         fetch('/api/orders', {
             method: 'POST',
@@ -661,7 +737,7 @@
                 'Authorization': 'Bearer ' + token,
                 'Content-Type': 'application/json'
             },
-            body: requestBody
+            body: JSON.stringify(requestBody)
         })
             .then(response => {
                 console.log('Order creation response status:', response.status);
@@ -684,10 +760,6 @@
             })
             .then(orderData => {
                 console.log('Order created successfully:', orderData);
-
-                return orderData;
-            })
-            .then(() => {
                 window.location.href = '/order';
             })
             .catch(error => {
@@ -698,7 +770,6 @@
                 checkoutButton.textContent = originalText;
             });
     }
-
 
     function logout() {
         const token = localStorage.getItem('authToken');
