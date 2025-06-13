@@ -94,4 +94,28 @@ public class BookController {
             return ResponseEntity.notFound().build();
         }
     }
+
+    @PutMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<BookDTO> updateBook(
+            @PathVariable Long id,
+            @RequestBody @Valid BookDTO bookDto) {
+
+        if (bookDto.getId() != null && !id.equals(bookDto.getId())) {
+            logger.warn("ID mismatch: path ID {} doesn't match body ID {}", id, bookDto.getId());
+            throw new RuntimeException("Id from path does not match with id from request");
+        }
+
+        try {
+            Book updatedBook = bookService.updateBook(id, bookDto);
+            logger.info("Updated book with ID: {}", id);
+            return ResponseEntity.ok(bookMapper.toDto(updatedBook));
+        } catch (EntityNotFoundException e) {
+            logger.error("Book not found with ID: {}", id);
+            return ResponseEntity.notFound().build();
+        } catch (Exception e) {
+            logger.error("Error updating book with ID {}: {}", id, e.getMessage());
+            return ResponseEntity.badRequest().body(null);
+        }
+    }
 }

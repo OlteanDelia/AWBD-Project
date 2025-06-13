@@ -379,7 +379,7 @@
         <a href="/profile">Profile</a>
         <a href="/cart">Cart</a>
         <a href="/wishlist">Wishlist</a>
-        <a href="/orders">Order History</a>
+        <a href="/orderhistory">Order History</a>
     </nav>
 </header>
 
@@ -468,7 +468,6 @@
         container.innerHTML = '';
         container.appendChild(messageDiv);
 
-        // Auto-hide after 5 seconds
         setTimeout(() => {
             if (container.contains(messageDiv)) {
                 container.removeChild(messageDiv);
@@ -497,7 +496,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', function() {
-        if (!checkAuthStatus()) {
+        if (!checkAuthStatus('USER')) {
             return;
         }
 
@@ -512,14 +511,29 @@
         loadBookDetails(bookId);
     });
 
-    function checkAuthStatus() {
-        const token = getAuthToken();
+    function checkAuthStatus(requiredRole = null) {
+        const token = localStorage.getItem('authToken');
+        const userRole = localStorage.getItem('userRole');
+
+        console.log('Checking auth - Token exists:', !!token, 'User role:', userRole, 'Required role:', requiredRole);
 
         if (!token) {
-            showMessage('Please log in to access this page.', 'error');
-            // Uncomment these lines to enforce authentication
-            // window.location.href = '/login';
-            // return false;
+            alert('Please log in to access this page.');
+            window.location.href = '/login';
+            return false;
+        }
+
+        if (requiredRole && userRole !== requiredRole) {
+            alert(`Access denied. This page requires ${requiredRole} role, but you have ${userRole} role.`);
+
+            if (userRole === 'ADMIN') {
+                window.location.href = '/admin_user';
+            } else if (userRole === 'USER') {
+                window.location.href = '/home';
+            } else {
+                window.location.href = '/login';
+            }
+            return false;
         }
 
         document.getElementById('login-link').style.display = 'none';
@@ -532,7 +546,6 @@
     function loadBookDetails(bookId) {
         const token = getAuthToken();
 
-        // Load book details
         fetch(`/api/books/${bookId}`, {
             method: 'GET',
             headers: {
@@ -574,15 +587,12 @@
         document.getElementById('loading-message').style.display = 'none';
         document.getElementById('book-details').style.display = 'block';
 
-        // Update page title
         document.title = `${book.title} - Bookstore`;
 
-        // Fill in book details
         document.getElementById('book-title').textContent = book.title;
         document.getElementById('book-author').innerHTML = `by <a href="/author?id=${book.authorId}">${book.author}</a>`;
         document.getElementById('book-price').textContent = `$${book.price ? book.price.toFixed(2) : '0.00'}`;
 
-        // Stock information
         const stockElement = document.getElementById('book-stock');
         if (book.stock > 0) {
             stockElement.innerHTML = `In Stock (${book.stock})`;
@@ -592,14 +602,12 @@
             stockElement.className = 'book-stock out-of-stock';
         }
 
-        // Update buttons based on stock
         const addToCartBtn = document.getElementById('add-to-cart-btn');
         if (book.stock <= 0) {
             addToCartBtn.disabled = true;
             addToCartBtn.textContent = 'Out of Stock';
         }
 
-        // Show reviews section
         document.getElementById('reviews-section').style.display = 'block';
         loadReviews(book.id);
         initializeStarRating();
@@ -609,7 +617,6 @@
         const stars = document.querySelectorAll('.star');
         const ratingInput = document.getElementById('selected-rating');
 
-        // Set default rating (5 stars)
         updateStarDisplay(5);
 
         stars.forEach(star => {
@@ -644,7 +651,6 @@
     function checkCartAndWishlistStatus(bookId) {
         const token = getAuthToken();
 
-        // Check cart status
         fetch('/api/cart', {
             method: 'GET',
             headers: {
@@ -668,7 +674,6 @@
                 console.error('Error checking cart status:', error);
             });
 
-        // Check wishlist status
         fetch('/api/wishlists/user', {
             method: 'GET',
             headers: {
@@ -846,7 +851,7 @@
     }
 
     function logout() {
-        const token = getAuthToken();
+        const token = localStorage.getItem('authToken');
 
         fetch('/api/users/logout', {
             method: 'POST',
@@ -862,9 +867,12 @@
                 console.error('Logout API error:', error);
             })
             .finally(() => {
-                removeAuthToken();
-                showMessage('You have been logged out successfully.', 'success');
-                setTimeout(() => window.location.href = '/login', 1000);
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('username');
+
+                alert('You have been logged out successfully.');
+                window.location.href = '/login';
             });
     }
 
@@ -903,7 +911,6 @@
         const reviewsList = document.getElementById('reviews-list');
         document.getElementById('loading-reviews').style.display = 'none';
 
-        // Clear existing reviews first
         const existingReviews = reviewsList.querySelectorAll('.review-item');
         existingReviews.forEach(item => item.remove());
 
@@ -913,10 +920,8 @@
             return;
         }
 
-        // Hide no reviews message
         document.getElementById('no-reviews').style.display = 'none';
 
-        // Show stats
         const totalReviews = reviews.length;
         const averageRating = reviews.reduce((sum, review) => sum + review.rating, 0) / totalReviews;
 
@@ -928,7 +933,6 @@
         reviews.forEach((review, index) => {
             const stars = '★'.repeat(review.rating) + '☆'.repeat(5 - review.rating);
 
-            // Handle username from DTO
             let userName = 'Anonymous User';
             if (review.username) {
                 userName = review.username;
@@ -969,7 +973,6 @@
         const rating = parseInt(document.getElementById('selected-rating').value);
         const content = document.getElementById('review-content').value.trim();
 
-        // Validate rating
         if (!rating || rating < 1 || rating > 5) {
             showMessage('Please select a valid rating (1-5 stars).', 'error');
             return;
@@ -985,7 +988,6 @@
         button.disabled = true;
         button.textContent = 'Submitting...';
 
-        // Create the review data object - only send content and rating
         const reviewData = {
             content: content,
             rating: rating
@@ -1013,32 +1015,27 @@
                 }
 
                 if (response.status === 201 || response.status === 200) {
-                    // Success - review created
                     console.log('Review submission successful');
                     return response.json().catch(() => ({ success: true }));
                 }
 
-                // Handle error responses
                 if (!response.ok) {
                     return response.text().then(text => {
                         console.error('Review submission failed with status:', response.status);
                         console.error('Error response body:', text);
 
-                        // Try to parse error as JSON for better error messages
                         try {
                             const errorJson = JSON.parse(text);
                             if (errorJson.message) {
                                 throw new Error(errorJson.message);
                             }
                         } catch (parseError) {
-                            // If not JSON, use the raw text
                         }
 
                         throw new Error(`Server error (${response.status}): ${text}`);
                     });
                 }
 
-                // Try to parse JSON response
                 return response.json();
             })
             .then(result => {
@@ -1046,12 +1043,10 @@
                 if (result) {
                     showMessage('Review submitted successfully!', 'success');
 
-                    // Clear the form
                     document.getElementById('review-content').value = '';
                     document.getElementById('selected-rating').value = '5';
                     updateStarDisplay(5);
 
-                    // Reload reviews
                     loadReviews(currentBook.id);
                 }
             })

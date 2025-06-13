@@ -258,7 +258,7 @@
         <a href="/profile">Profile</a>
         <a href="/cart">Cart</a>
         <a href="/wishlist">Wishlist</a>
-        <a href="/orders">Order History</a>
+        <a href="/orderhistory">Order History</a>
     </nav>
 </header>
 
@@ -320,7 +320,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', function() {
-        if (!checkAuthStatus()) {
+        if (!checkAuthStatus('USER')) {
             return;
         }
 
@@ -383,12 +383,28 @@
             });
     }
 
-    function checkAuthStatus() {
-        const token = getAuthToken();
+    function checkAuthStatus(requiredRole = null) {
+        const token = localStorage.getItem('authToken');
+        const userRole = localStorage.getItem('userRole');
+
+        console.log('Checking auth - Token exists:', !!token, 'User role:', userRole, 'Required role:', requiredRole);
 
         if (!token) {
-            alert('Please log in to view order details.');
+            alert('Please log in to access this page.');
             window.location.href = '/login';
+            return false;
+        }
+
+        if (requiredRole && userRole !== requiredRole) {
+            alert(`Access denied. This page requires ${requiredRole} role, but you have ${userRole} role.`);
+
+            if (userRole === 'ADMIN') {
+                window.location.href = '/admin_user';
+            } else if (userRole === 'USER') {
+                window.location.href = '/home';
+            } else {
+                window.location.href = '/login';
+            }
             return false;
         }
 
@@ -398,7 +414,6 @@
 
         return true;
     }
-
     function loadOrder(orderId) {
         const token = getAuthToken();
         console.log('Loading order ID:', orderId);
@@ -454,7 +469,6 @@
     function loadOrderBooks(order) {
         const token = getAuthToken();
 
-        // First, trigger total price calculation on the backend
         fetch(`/api/orders/${order.id}/calculate-total`, {
             method: 'POST',
             headers: {
@@ -469,7 +483,6 @@
                 return response.ok;
             })
             .then(() => {
-                // Now get the updated order with calculated total
                 return fetch(`/api/orders/${order.id}`, {
                     method: 'GET',
                     headers: {
@@ -486,15 +499,12 @@
             })
             .then(updatedOrder => {
                 console.log('Updated order with calculated total:', updatedOrder);
-                // Use the total price from the backend-calculated order
                 order.totalPrice = updatedOrder.totalPrice;
 
-                // Now load book details for display
                 return loadBookDetails(order);
             })
             .catch(error => {
                 console.error('Error calculating total price:', error);
-                // Fallback to loading book details without backend total
                 loadBookDetails(order);
             });
     }
@@ -521,17 +531,14 @@
 
         Promise.all(bookPromises)
             .then(books => {
-                // Filter out any null results
                 const validBooks = books.filter(book => book !== null);
                 console.log('Books loaded:', validBooks);
 
-                // Use backend-calculated total if available, otherwise calculate from books
                 const totalPrice = order.totalPrice !== undefined ? order.totalPrice :
                     validBooks.reduce((sum, book) => sum + (book.price || 0), 0);
 
                 console.log('Final total price used:', totalPrice);
 
-                // Create order object with books
                 const orderWithBooks = {
                     ...order,
                     books: validBooks,
@@ -739,7 +746,7 @@
     }
 
     function logout() {
-        const token = getAuthToken();
+        const token = localStorage.getItem('authToken');
 
         fetch('/api/users/logout', {
             method: 'POST',
@@ -755,7 +762,10 @@
                 console.error('Logout API error:', error);
             })
             .finally(() => {
-                removeAuthToken();
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('username');
+
                 alert('You have been logged out successfully.');
                 window.location.href = '/login';
             });

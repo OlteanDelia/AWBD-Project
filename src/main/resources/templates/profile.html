@@ -144,13 +144,11 @@
 <header>
     <h1>User Profile</h1>
     <nav>
-        <button id="logout-button" style="display: none;" onclick="logout()">Logout</button>
-        <a href="/login" id="login-link">Login</a>
-        <a href="/register" id="register-link">Register</a>
+        <button id="logout-button" onclick="logout()">Logout</button>
         <a href="/home">Home</a>
         <a href="/cart">Cart</a>
         <a href="/wishlist">Wishlist</a>
-        <a href="/orders">Order History</a>
+        <a href="/orderhistory">Order History</a>
     </nav>
 </header>
 
@@ -185,172 +183,48 @@
 
 <script>
     let currentUser = null;
-    let authToken = null;
 
-    window.addEventListener('DOMContentLoaded', () => {
-        if (!checkAuthStatus()) return;
-        loadCurrentUserProfile();
-    });
+    function checkAuthStatus(requiredRole = null) {
+        const token = localStorage.getItem('authToken');
+        const userRole = localStorage.getItem('userRole');
 
-    function checkAuthStatus() {
-        authToken = getAuthToken();
+        console.log('Checking auth - Token exists:', !!token, 'User role:', userRole, 'Required role:', requiredRole);
 
-        if (!authToken) {
-            showError('Please log in to access your profile.');
-            setTimeout(() => window.location.href = '/login', 2000);
+        if (!token) {
+            alert('Please log in to access this page.');
+            window.location.href = '/login';
             return false;
         }
 
-        // Update navigation
-        document.getElementById('login-link').style.display = 'none';
-        document.getElementById('register-link').style.display = 'none';
-        document.getElementById('logout-button').style.display = 'inline';
+        if (requiredRole && userRole !== requiredRole) {
+            alert(`Access denied. This page requires ${requiredRole} role, but you have ${userRole} role.`);
+
+            if (userRole === 'ADMIN') {
+                window.location.href = '/admin_user';
+            } else {
+                window.location.href = '/login';
+            }
+            return false;
+        }
 
         return true;
     }
 
-    function getAuthToken() {
-        return window.authToken ||
-            (typeof localStorage !== 'undefined' ? localStorage.getItem('authToken') : null) ||
-            'simulated-auth-token-12345';
+    function handleSessionExpiry() {
+        alert('Your session has expired. Please log in again.');
+        localStorage.removeItem('authToken');
+        localStorage.removeItem('userRole');
+        localStorage.removeItem('username');
+        window.location.href = '/login';
     }
 
-    function setAuthToken(token) {
-        window.authToken = token;
-        if (typeof localStorage !== 'undefined') {
-            localStorage.setItem('authToken', token);
-        }
-    }
-
-    function removeAuthToken() {
-        window.authToken = null;
-        if (typeof localStorage !== 'undefined') {
-            localStorage.removeItem('authToken');
-        }
-    }
-
-    function parseJwtPayload(token) {
-        try {
-            const base64Url = token.split('.')[1];
-            const base64 = base64Url.replace(/-/g, '+').replace(/_/g, '/');
-            const jsonPayload = decodeURIComponent(window.atob(base64).split('').map(function(c) {
-                return '%' + ('00' + c.charCodeAt(0).toString(16)).slice(-2);
-            }).join(''));
-            return JSON.parse(jsonPayload);
-        } catch (error) {
-            console.error('Error parsing JWT:', error);
-            return null;
-        }
-    }
-
-    function loadCurrentUserProfile() {
-        if (!authToken) {
-            showError('No authentication token found');
+    window.addEventListener('DOMContentLoaded', function() {
+        if (!checkAuthStatus('USER')) {
             return;
         }
 
-        // Parse JWT to get username
-        const payload = parseJwtPayload(authToken);
-        if (!payload || !payload.sub) {
-            showError('Invalid token format');
-            removeAuthToken();
-            window.location.href = '/login';
-            return;
-        }
-
-        const username = payload.sub;
-        const role = payload.role || 'USER';
-
-        // Try to get the user ID by making a login request with the current credentials
-        // Since we have the token, we can use it to get user data
-        getUserDataFromUsername(username, role);
-    }
-
-    function getUserDataFromUsername(username, role) {
-        // We'll search for our user by trying to get user data
-        // Since we know our username, we can try to find our user ID
-
-        // For now, let's use the token info we have and try different approaches
-        currentUser = {
-            username: username,
-            role: role
-        };
-
-        // Update profile info display
-        document.getElementById('current-username').textContent = username;
-        document.getElementById('current-role').textContent = role;
-        document.getElementById('username').value = username;
-
-        // Try to find the user ID by attempting a few approaches
-        findUserIdByAuth();
-    }
-
-    function findUserIdByAuth() {
-        // Method 1: Try to use a profile endpoint if it exists
-        // Since we don't have that, we'll try to find our user ID by testing access
-        let currentId = 1;
-        const maxId = 100;
-
-        function tryNextId() {
-            if (currentId > maxId) {
-                showError('Could not determine your user ID. Profile update may not work properly.');
-                showLoading(false);
-                return;
-            }
-
-            fetch(`/api/users/${currentId}`, {
-                method: 'GET',
-                headers: {
-                    'Authorization': 'Bearer ' + authToken,
-                    'Content-Type': 'application/json'
-                }
-            })
-                .then(response => {
-                    if (response.ok) {
-                        return response.json();
-                    } else if (response.status === 403 || response.status === 404) {
-                        // Try next ID
-                        currentId++;
-                        tryNextId();
-                        return null;
-                    } else {
-                        throw new Error('Unexpected response: ' + response.status);
-                    }
-                })
-                .then(userData => {
-                    if (userData && userData.username === currentUser.username) {
-                        // Found our user!
-                        currentUser.id = userData.id;
-                        currentUser.role = userData.role;
-
-                        // Update display with complete user data
-                        document.getElementById('current-role').textContent = userData.role;
-                        showLoading(false);
-                    } else if (userData) {
-                        // This is a different user, try next
-                        currentId++;
-                        tryNextId();
-                    }
-                })
-                .catch(error => {
-                    console.error('Error finding user ID:', error);
-                    currentId++;
-                    if (currentId <= maxId) {
-                        tryNextId();
-                    } else {
-                        showError('Could not determine your user ID.');
-                        showLoading(false);
-                    }
-                });
-        }
-
-        tryNextId();
-    }
-
-    function showLoading(isLoading) {
-        document.getElementById('loading').style.display = isLoading ? 'block' : 'none';
-        document.getElementById('profile-content').style.display = isLoading ? 'none' : 'block';
-    }
+        loadCurrentUserProfile();
+    });
 
     function showMessage(message, type = 'success') {
         const container = document.getElementById('message-container');
@@ -361,7 +235,6 @@
         container.innerHTML = '';
         container.appendChild(messageDiv);
 
-        // Auto-hide after 5 seconds for success messages
         if (type === 'success') {
             setTimeout(() => {
                 if (container.contains(messageDiv)) {
@@ -373,6 +246,107 @@
 
     function showError(message) {
         showMessage(message, 'error');
+    }
+
+    function showLoading(isLoading) {
+        document.getElementById('loading').style.display = isLoading ? 'block' : 'none';
+        document.getElementById('profile-content').style.display = isLoading ? 'none' : 'block';
+    }
+
+    function loadCurrentUserProfile() {
+        const token = localStorage.getItem('authToken');
+        const username = localStorage.getItem('username');
+
+        console.log('Loading profile for user:', username);
+        console.log('Token exists:', !!token);
+        console.log('Token preview:', token ? token.substring(0, 20) + '...' : 'null');
+
+        if (!token || !username) {
+            showError('Authentication information not found. Please log in again.');
+            handleSessionExpiry();
+            return;
+        }
+
+        console.log('Using fallback method to find user by username');
+        findUserByUsername(username, token);
+    }
+
+    function findUserByUsername(username, token) {
+        let currentId = 1;
+        const maxId = 100;
+
+        function tryNextId() {
+            if (currentId > maxId) {
+                showError('Could not find your user profile. Please try logging out and logging back in.');
+                showLoading(false);
+                return;
+            }
+
+            fetch(`/api/users/${currentId}`, {
+                method: 'GET',
+                headers: {
+                    'Authorization': 'Bearer ' + token,
+                    'Content-Type': 'application/json'
+                }
+            })
+                .then(response => {
+                    console.log(`Trying user ID ${currentId}, response status: ${response.status}`);
+
+                    if (response.status === 401) {
+                        console.error('Unauthorized - token may be invalid');
+                        handleSessionExpiry();
+                        return null;
+                    }
+                    if (response.status === 403) {
+                        console.log(`Forbidden access to user ${currentId}, trying next...`);
+                        currentId++;
+                        tryNextId();
+                        return null;
+                    }
+                    if (response.ok) {
+                        return response.json();
+                    } else if (response.status === 404) {
+                        currentId++;
+                        tryNextId();
+                        return null;
+                    } else {
+                        console.error('Unexpected response:', response.status);
+                        currentId++;
+                        tryNextId();
+                        return null;
+                    }
+                })
+                .then(userData => {
+                    if (userData && userData.username === username) {
+                        console.log('Found matching user:', userData);
+                        currentUser = userData;
+
+                        document.getElementById('current-username').textContent = userData.username;
+                        document.getElementById('current-role').textContent = userData.role;
+                        document.getElementById('username').value = userData.username;
+
+                        showLoading(false);
+                        return userData;
+                    } else if (userData) {
+                        console.log(`User ${userData.username} doesn't match ${username}, trying next...`);
+                        currentId++;
+                        tryNextId();
+                    }
+                })
+                .catch(error => {
+                    console.error('Error finding user:', error);
+                    currentId++;
+                    if (currentId <= maxId) {
+                        tryNextId();
+                    } else {
+                        showError('Could not find your user profile.');
+                        showLoading(false);
+                    }
+                });
+        }
+
+        tryNextId();
+        return Promise.resolve(null);
     }
 
     document.getElementById('profile-form').addEventListener('submit', function(e) {
@@ -396,7 +370,6 @@
             return;
         }
 
-        // Disable the submit button to prevent double submission
         const updateButton = document.getElementById('update-button');
         updateButton.disabled = true;
         updateButton.textContent = 'Updating...';
@@ -412,6 +385,7 @@
             return;
         }
 
+        const token = localStorage.getItem('authToken');
         const updateData = {
             id: currentUser.id,
             username: newUsername,
@@ -425,16 +399,14 @@
         fetch(`/api/users/${currentUser.id}`, {
             method: 'PUT',
             headers: {
-                'Authorization': 'Bearer ' + authToken,
+                'Authorization': 'Bearer ' + token,
                 'Content-Type': 'application/json'
             },
             body: JSON.stringify(updateData)
         })
             .then(async response => {
                 if (response.status === 401 || response.status === 403) {
-                    showError('Your session has expired. Please log in again.');
-                    removeAuthToken();
-                    setTimeout(() => window.location.href = '/login', 2000);
+                    handleSessionExpiry();
                     return null;
                 }
 
@@ -450,19 +422,15 @@
             .then(result => {
                 if (!result) return;
 
-                // Update current user data
                 currentUser.username = result.username;
 
-                // Update the display with new information
                 document.getElementById('current-username').textContent = result.username;
                 document.getElementById('username').value = result.username;
 
-                // Clear password field
                 document.getElementById('password').value = '';
 
                 showMessage('Profile updated successfully! You will be logged out in 3 seconds for security purposes.');
 
-                // Auto-logout after successful update for security
                 setTimeout(() => {
                     performSecurityLogout();
                 }, 3000);
@@ -470,17 +438,20 @@
             .catch(error => {
                 console.error('Update error:', error);
                 showError(error.message || 'Error updating profile. Please try again.');
+            })
+            .finally(() => {
                 updateButton.disabled = false;
                 updateButton.textContent = 'Update Profile';
             });
     }
 
     function performSecurityLogout() {
-        // Call logout API first
+        const token = localStorage.getItem('authToken');
+
         fetch('/api/users/logout', {
             method: 'POST',
             headers: {
-                'Authorization': 'Bearer ' + authToken,
+                'Authorization': 'Bearer ' + token,
                 'Content-Type': 'application/json'
             }
         })
@@ -488,20 +459,22 @@
                 console.error('Logout API error:', error);
             })
             .finally(() => {
-                // Clear all tokens
-                removeAuthToken();
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('username');
 
-                // Show logout message and redirect
                 showMessage('You have been logged out successfully. Please log in again with your new credentials.');
                 setTimeout(() => window.location.href = '/login', 2000);
             });
     }
 
     function logout() {
+        const token = localStorage.getItem('authToken');
+
         fetch('/api/users/logout', {
             method: 'POST',
             headers: {
-                'Authorization': 'Bearer ' + authToken,
+                'Authorization': 'Bearer ' + token,
                 'Content-Type': 'application/json'
             }
         })
@@ -509,7 +482,10 @@
                 console.error('Logout API error:', error);
             })
             .finally(() => {
-                removeAuthToken();
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('username');
+
                 showMessage('You have been logged out successfully.');
                 setTimeout(() => window.location.href = '/login', 1000);
             });

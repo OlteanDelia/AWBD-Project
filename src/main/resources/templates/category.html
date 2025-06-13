@@ -281,7 +281,7 @@
         <a href="/profile">Profile</a>
         <a href="/cart">Cart</a>
         <a href="/wishlist">Wishlist</a>
-        <a href="/orders">Order History</a>
+        <a href="/orderhistory">Order History</a>
     </nav>
 </header>
 
@@ -320,7 +320,6 @@
         container.innerHTML = '';
         container.appendChild(messageDiv);
 
-        // Auto-hide after 5 seconds
         setTimeout(() => {
             if (container.contains(messageDiv)) {
                 container.removeChild(messageDiv);
@@ -349,7 +348,7 @@
     }
 
     window.addEventListener('DOMContentLoaded', function() {
-        if (!checkAuthStatus()) {
+        if (!checkAuthStatus('USER')) {
             return;
         }
 
@@ -367,13 +366,28 @@
         });
     });
 
-    function checkAuthStatus() {
-        const token = getAuthToken();
+    function checkAuthStatus(requiredRole = null) {
+        const token = localStorage.getItem('authToken');
+        const userRole = localStorage.getItem('userRole');
+
+        console.log('Checking auth - Token exists:', !!token, 'User role:', userRole, 'Required role:', requiredRole);
 
         if (!token) {
-            showMessage('Please log in to access this page.', 'error');
-
+            alert('Please log in to access this page.');
             window.location.href = '/login';
+            return false;
+        }
+
+        if (requiredRole && userRole !== requiredRole) {
+            alert(`Access denied. This page requires ${requiredRole} role, but you have ${userRole} role.`);
+
+            if (userRole === 'ADMIN') {
+                window.location.href = '/admin_user';
+            } else if (userRole === 'USER') {
+                window.location.href = '/home';
+            } else {
+                window.location.href = '/login';
+            }
             return false;
         }
 
@@ -388,7 +402,6 @@
         const token = getAuthToken();
         console.log('Loading cart and wishlist with token:', token);
 
-        // Load cart
         const cartPromise = fetch('/api/cart', {
             method: 'GET',
             headers: {
@@ -418,7 +431,6 @@
                 cartItems = {};
             });
 
-        // Load wishlist using the correct endpoint
         const wishlistPromise = fetch('/api/wishlists/user', {
             method: 'GET',
             headers: {
@@ -591,7 +603,7 @@
     }
 
     function addToCart(bookId, event) {
-        event.stopPropagation(); // Prevent the book click event
+        event.stopPropagation();
         const token = getAuthToken();
 
         if (!token) {
@@ -668,7 +680,7 @@
     }
 
     function addToWishlist(bookId, event) {
-        event.stopPropagation(); // Prevent the book click event
+        event.stopPropagation();
         const token = getAuthToken();
 
         if (!token) {
@@ -688,7 +700,6 @@
 
         console.log(`Adding book ${bookId} to wishlist`);
 
-        // Use the correct endpoint from your WishlistController: POST /api/wishlists/{bookId}
         fetch(`/api/wishlists/${bookId}`, {
             method: 'POST',
             headers: {
@@ -707,7 +718,6 @@
                 }
 
                 if (response.status === 409) {
-                    // Book already in wishlist
                     wishlistItems[bookId] = true;
                     button.classList.remove('btn-secondary');
                     button.classList.add('btn-warning');
@@ -745,7 +755,7 @@
     }
 
     function logout() {
-        const token = getAuthToken();
+        const token = localStorage.getItem('authToken');
 
         fetch('/api/users/logout', {
             method: 'POST',
@@ -761,9 +771,12 @@
                 console.error('Logout API error:', error);
             })
             .finally(() => {
-                removeAuthToken();
-                showMessage('You have been logged out successfully.', 'success');
-                setTimeout(() => window.location.href = '/login', 1000);
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('username');
+
+                alert('You have been logged out successfully.');
+                window.location.href = '/login';
             });
     }
 </script>

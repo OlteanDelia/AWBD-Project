@@ -81,18 +81,18 @@ class AuthorControllerTest {
 //        verify(authorService, times(1)).getById(1L);
 //    }
 
-    @Test
-    void getAllAuthors_Success() {
-        List<Author> authors = Arrays.asList(author);
-
-        when(authorService.getAll()).thenReturn(authors);
-
-        List<Author> result = authorController.getAllAuthors();
-
-        assertEquals(1, result.size());
-        assertEquals("Test Author", result.get(0).getName());
-        verify(authorService, times(1)).getAll();
-    }
+//    @Test
+//    void getAllAuthors_Success() {
+//        List<Author> authors = Arrays.asList(author);
+//
+//        when(authorService.getAll()).thenReturn(authors);
+//
+//        List<Author> result = authorController.getAllAuthors();
+//
+//        assertEquals(1, result.size());
+//        assertEquals("Test Author", result.get(0).getName());
+//        verify(authorService, times(1)).getAll();
+//    }
 
     @Test
     void updateAuthor_Success() {

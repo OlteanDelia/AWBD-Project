@@ -31,6 +31,8 @@ public class MvcCofiguration implements WebMvcConfigurer {
 
     @Override
     public void addViewControllers(ViewControllerRegistry registry) {
+
+        registry.addRedirectViewController("/", "/welcome");
         registry.addViewController("/login").setViewName("login");
         registry.addViewController("/register").setViewName("register");
         registry.addViewController("/welcome").setViewName("welcome");
@@ -43,5 +45,11 @@ public class MvcCofiguration implements WebMvcConfigurer {
         registry.addViewController("/orderhistory").setViewName("orderhistory");
         registry.addViewController("/order").setViewName("order");
         registry.addViewController("/book").setViewName("book");
+        registry.addViewController("/admin_author").setViewName("admin_author");
+        registry.addViewController("/admin_category").setViewName("admin_category");
+        registry.addViewController("/admin_book").setViewName("admin_book");
+        registry.addViewController("/admin_order").setViewName("admin_order");
+        registry.addViewController("/admin_user").setViewName("admin_user");
+        registry.addViewController("/admin_sale").setViewName("admin_sale");
     }
 }

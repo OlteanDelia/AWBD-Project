@@ -132,9 +132,7 @@ public class SaleService {
         return saleRepository.findAllActiveSales();
     }
 
-    /**
-     * Găsește toate sale-urile active cu verificare de status la runtime
-     */
+
     public List<Sale> getAllActiveSalesWithStatusCheck() {
         // Mai întâi actualizează toate statusurile
         updateAllSaleStatuses();

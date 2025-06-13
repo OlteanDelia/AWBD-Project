@@ -73,14 +73,13 @@ public class Sale {
     public boolean updateStatusIfNeeded(){
         LocalDate today = LocalDate.now();
 
-        if(today.isBefore(startDate) || today.isAfter(endDate)) {
+
+        if ((today.isBefore(startDate) || today.isAfter(endDate)) && this.isActive) {
             this.isActive = false;
-            return false;
-        } else {
-            this.isActive = true;
             return true;
         }
 
+        return false;
     }
 
 }

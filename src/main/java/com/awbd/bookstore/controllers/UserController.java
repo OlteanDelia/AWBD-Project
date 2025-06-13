@@ -19,10 +19,7 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.net.URI;
-import java.util.Base64;
-import java.util.HashMap;
-import java.util.Map;
-import java.util.Optional;
+import java.util.*;
 
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -91,6 +88,8 @@ public class UserController {
                 Map<String, Object> response = new HashMap<>();
                 response.put("user", userMapper.toDto(user));
                 response.put("token", token);
+                response.put("username", user.getUsername());
+                response.put("role", user.getRole().name());
 
                 return ResponseEntity.ok(response);
             }
@@ -183,6 +182,16 @@ public class UserController {
 
         logger.info("Logout realizat cu succes");
         return ResponseEntity.ok().build();
+    }
+
+    @GetMapping
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<List<UserDTO>> getAllUsers() {
+        List<User> allUsers = userService.getAllUsers();
+        List<UserDTO> userDTOs = userMapper.toDtoList(allUsers);
+
+        logger.info("Retrieved {} users for admin", userDTOs.size());
+        return ResponseEntity.ok(userDTOs);
     }
 
 

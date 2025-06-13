@@ -350,7 +350,6 @@
         <a href="/profile">Profile</a>
         <a href="/cart">Cart</a>
         <a href="/wishlist">Wishlist</a>
-        <a href="/orders">Order History</a>
     </nav>
 </header>
 
@@ -411,18 +410,34 @@
     }
 
     window.addEventListener('DOMContentLoaded', function() {
-        if (!checkAuthStatus()) {
+        if (!checkAuthStatus('USER')) {
             return;
         }
         loadAllOrders();
     });
 
-    function checkAuthStatus() {
-        const token = getAuthToken();
+    function checkAuthStatus(requiredRole = null) {
+        const token = localStorage.getItem('authToken');
+        const userRole = localStorage.getItem('userRole');
+
+        console.log('Checking auth - Token exists:', !!token, 'User role:', userRole, 'Required role:', requiredRole);
 
         if (!token) {
-            alert('Please log in to view your order history.');
+            alert('Please log in to access this page.');
             window.location.href = '/login';
+            return false;
+        }
+
+        if (requiredRole && userRole !== requiredRole) {
+            alert(`Access denied. This page requires ${requiredRole} role, but you have ${userRole} role.`);
+
+            if (userRole === 'ADMIN') {
+                window.location.href = '/admin_user';
+            } else if (userRole === 'USER') {
+                window.location.href = '/home';
+            } else {
+                window.location.href = '/login';
+            }
             return false;
         }
 
@@ -487,7 +502,6 @@
     function loadOrdersWithDetails(orders) {
         const token = getAuthToken();
 
-        // Load details for each order (books and sales)
         const orderPromises = orders.map(order => {
             return loadOrderDetails(order, token);
         });
@@ -509,7 +523,6 @@
     function loadOrderDetails(order, token) {
         console.log('Loading details for order:', order.id);
 
-        // Load book details
         const bookPromises = Array.from(order.bookIds).map(bookId => {
             return fetch(`/api/books/${bookId}`, {
                 method: 'GET',
@@ -531,12 +544,10 @@
                 });
         });
 
-        // Load sale details if order has a sale (FETCH EVEN IF INACTIVE)
         let salePromise = Promise.resolve(null);
         if (order.saleId) {
             console.log(`Fetching sale details for saleId: ${order.saleId}`);
 
-            // Try the regular sales endpoint first
             salePromise = fetch(`/api/sales/${order.saleId}`, {
                 method: 'GET',
                 headers: {
@@ -550,7 +561,6 @@
                         return response.json();
                     }
 
-                    // If regular endpoint fails, try fetching from all sales
                     console.warn(`Regular sale endpoint failed for ${order.saleId}, trying alternative...`);
                     return fetchSaleFromAllSales(order.saleId, token);
                 })
@@ -581,7 +591,6 @@
             });
     }
 
-    // Helper function to fetch sale from all sales endpoint (for inactive sales)
     function fetchSaleFromAllSales(saleId, token) {
         console.log(`Attempting to fetch inactive sale ${saleId} from all sales`);
 
@@ -640,7 +649,6 @@
         let originalTotal = 0;
         let finalTotal = order.totalPrice || 0;
 
-        // Calculate original total
         books.forEach(book => {
             originalTotal += book.price || 0;
         });
@@ -733,7 +741,6 @@
             let finalPrice = originalPrice;
             let isDiscounted = false;
 
-            // Check if this book was discounted
             if (sale && sale.categoryIds && book.categoryId) {
                 if (sale.categoryIds.includes(book.categoryId)) {
                     finalPrice = originalPrice * (1 - sale.discountPercentage / 100);
@@ -803,7 +810,7 @@
     }
 
     function logout() {
-        const token = getAuthToken();
+        const token = localStorage.getItem('authToken');
 
         fetch('/api/users/logout', {
             method: 'POST',
@@ -819,7 +826,10 @@
                 console.error('Logout API error:', error);
             })
             .finally(() => {
-                removeAuthToken();
+                localStorage.removeItem('authToken');
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('username');
+
                 alert('You have been logged out successfully.');
                 window.location.href = '/login';
             });

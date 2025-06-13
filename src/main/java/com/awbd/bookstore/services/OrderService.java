@@ -55,7 +55,6 @@ public class OrderService {
 
         Sale sale = null;
 
-        // Handle sale application (completely optional)
         if (saleId != null) {
             try {
                 sale = saleService.getById(saleId);
@@ -76,15 +75,12 @@ public class OrderService {
 
         double totalPrice = 0.0;
 
-        // Calculate total price
         if (sale == null) {
-            // No sale - regular pricing
             totalPrice = order.getBooks().stream()
                     .mapToDouble(Book::getPrice)
                     .sum();
             logger.info("Order total without discount: ${}", totalPrice);
         } else {
-            // Sale applied - calculate with discount
             double percentage = sale.getDiscountPercentage();
             List<Category> saleCategories = sale.getCategories();
 
@@ -101,11 +97,9 @@ public class OrderService {
 
         order.setTotalPrice(totalPrice);
 
-        // Save the order
         Order savedOrder = orderRepository.save(order);
         logger.info("Order saved with ID: {}", savedOrder.getId());
 
-        // DEACTIVATE THE SALE AFTER SUCCESSFUL ORDER CREATION
         if (sale != null) {
             logger.info("Deactivating sale: {}", sale.getSaleCode());
             sale.setIsActive(false);
@@ -136,14 +130,12 @@ public class OrderService {
         Order order = orderRepository.findById(orderId)
                 .orElseThrow(() -> new OrderNotFoundException("Order with ID " + orderId + " not found"));
 
-        // Optional: update user
         if (userId != null && !userId.equals(order.getUser().getId())) {
             User user = userRepository.findById(userId)
                     .orElseThrow(() -> new UserNotFoundException("User with ID " + userId + " not found"));
             order.setUser(user);
         }
 
-        // Update books
         if (bookIds == null || bookIds.isEmpty()) {
             throw new EmptyCartException("Book IDs cannot be empty");
         }
@@ -157,6 +149,14 @@ public class OrderService {
         order.setBooks(books);
 
         return orderRepository.save(order);
+    }
+
+    public void deleteOrder(Long orderId) {
+        if (!orderRepository.existsById(orderId)) {
+            throw new OrderNotFoundException("Order with ID " + orderId + " not found");
+        }
+        orderRepository.deleteById(orderId);
+        logger.info("Order with ID {} deleted successfully", orderId);
     }
 
 

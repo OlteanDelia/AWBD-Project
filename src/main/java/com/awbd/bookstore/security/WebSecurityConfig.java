@@ -33,6 +33,7 @@ public class WebSecurityConfig {
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers(
                                 "/welcome", "/login", "/register","/home","/category","/author","/profile","/cart","/wishlist","/order","/book","/orderhistory",
+                                "/admin_author","/admin_book","/admin_category","/admin_order","/admin_sale","/admin_user",
                                 "/api/users/register", "/api/users/login",
                                 "/css/**", "/js/**", "/images/**"
                         ).permitAll()

@@ -50,9 +50,13 @@ public class AuthorController {
     }
 
     @GetMapping
-    public List<Author> getAllAuthors() {
-        return authorService.getAll();
+    public List<AuthorDTO> getAllAuthors() {
+        return authorService.getAll()
+                .stream()
+                .map(authorMapper::toDto)
+                .toList();
     }
+
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")

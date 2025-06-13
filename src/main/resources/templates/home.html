@@ -122,6 +122,7 @@
         <button id="logout-button" style="display: none;" onclick="logout()">Logout</button>
         <a href="/login" id="login-link">Login</a>
         <a href="/register" id="register-link">Register</a>
+        <a href="/home">Home</a>
         <a href="/profile">Profile</a>
         <a href="/cart">Cart</a>
         <a href="/wishlist">Wishlist</a>
@@ -142,25 +143,39 @@
     </section>
 </main>
 
-
 <script>
     let categoriesData = [];
 
     window.addEventListener('DOMContentLoaded', function() {
-
-        if (!checkAuthStatus()) {
+        if (!checkAuthStatus('USER')) {
             return;
         }
 
         loadCategories();
     });
 
-    function checkAuthStatus() {
+    function checkAuthStatus(requiredRole = null) {
         const token = localStorage.getItem('authToken');
+        const userRole = localStorage.getItem('userRole');
+
+        console.log('Checking auth - Token exists:', !!token, 'User role:', userRole, 'Required role:', requiredRole);
 
         if (!token) {
-            alert('Please log in to access categories.');
+            alert('Please log in to access this page.');
             window.location.href = '/login';
+            return false;
+        }
+
+        if (requiredRole && userRole !== requiredRole) {
+            alert(`Access denied. This page requires ${requiredRole} role, but you have ${userRole} role.`);
+
+            if (userRole === 'ADMIN') {
+                window.location.href = '/admin_user';
+            } else if (userRole === 'USER') {
+                window.location.href = '/home';
+            } else {
+                window.location.href = '/login';
+            }
             return false;
         }
 
@@ -174,7 +189,6 @@
     function loadCategories() {
         const token = localStorage.getItem('authToken');
 
-        // Fixed: Changed from '/api/categories/all' to '/api/categories'
         fetch('/api/categories', {
             method: 'GET',
             headers: {
@@ -184,8 +198,10 @@
         })
             .then(response => {
                 if (response.status === 401 || response.status === 403) {
-                    alert('Your session has expired. Please log in again.');
+                    alert('Your session has expired or you don\'t have permission. Please log in again.');
                     localStorage.removeItem('authToken');
+                    localStorage.removeItem('userRole');
+                    localStorage.removeItem('username');
                     window.location.href = '/login';
                     return;
                 }
@@ -262,9 +278,10 @@
             })
             .finally(() => {
                 localStorage.removeItem('authToken');
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('username');
 
                 alert('You have been logged out successfully.');
-
                 window.location.href = '/login';
             });
     }

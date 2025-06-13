@@ -229,7 +229,7 @@
         <a href="/home">Home</a>
         <a href="/profile">Profile</a>
         <a href="/wishlist">Wishlist</a>
-        <a href="/orders">Order History</a>
+        <a href="/orderhistory">Order History</a>
     </nav>
 </header>
 
@@ -269,18 +269,34 @@
     let bestSale = null;
 
     window.addEventListener('DOMContentLoaded', function() {
-        if (!checkAuthStatus()) {
+        if (!checkAuthStatus('USER')) {
             return;
         }
         loadCart();
     });
 
-    function checkAuthStatus() {
+    function checkAuthStatus(requiredRole = null) {
         const token = localStorage.getItem('authToken');
+        const userRole = localStorage.getItem('userRole');
+
+        console.log('Checking auth - Token exists:', !!token, 'User role:', userRole, 'Required role:', requiredRole);
 
         if (!token) {
-            alert('Please log in to access your cart.');
+            alert('Please log in to access this page.');
             window.location.href = '/login';
+            return false;
+        }
+
+        if (requiredRole && userRole !== requiredRole) {
+            alert(`Access denied. This page requires ${requiredRole} role, but you have ${userRole} role.`);
+
+            if (userRole === 'ADMIN') {
+                window.location.href = '/admin_user';
+            } else if (userRole === 'USER') {
+                window.location.href = '/home';
+            } else {
+                window.location.href = '/login';
+            }
             return false;
         }
 
@@ -291,21 +307,17 @@
         return true;
     }
 
-    // Helper function to safely parse JSON responses
     async function safeJsonParse(response) {
         const text = await response.text();
 
-        // Handle empty responses
         if (!text || text.trim() === '') {
             return null;
         }
 
-        // Handle "null" string responses
         if (text.trim().toLowerCase() === 'null') {
             return null;
         }
 
-        // Handle "Null return" or similar messages
         if (text.includes('Null return') || text.includes('null return')) {
             return null;
         }
@@ -324,7 +336,6 @@
         console.log('Starting to load cart...');
         console.log('Token exists:', !!token);
 
-        // Show loading message - check if element exists first
         const loadingElement = document.getElementById('loading-message');
         const errorElement = document.getElementById('error-message');
         const emptyElement = document.getElementById('empty-cart-message');
@@ -333,7 +344,6 @@
         if (errorElement) errorElement.style.display = 'none';
         if (emptyElement) emptyElement.style.display = 'none';
 
-        // Load cart, total, and sales together
         Promise.all([
             fetch('/api/cart/books', {
                 method: 'GET',
@@ -370,7 +380,6 @@
                     return;
                 }
 
-                // Get books with safe JSON parsing
                 let books = [];
                 if (booksResponse.ok) {
                     const booksData = await safeJsonParse(booksResponse);
@@ -381,12 +390,10 @@
                     throw new Error('Failed to load cart books: ' + booksResponse.status);
                 }
 
-                // Get total with safe JSON parsing
                 let total = 0;
                 if (totalResponse.ok) {
                     const totalData = await safeJsonParse(totalResponse);
                     total = totalData || 0;
-                    // Handle case where backend returns null for total
                     if (total === null || isNaN(total)) {
                         total = 0;
                     }
@@ -396,7 +403,6 @@
                     throw new Error('Failed to load cart total: ' + totalResponse.status);
                 }
 
-                // Get sales (non-critical) with safe JSON parsing
                 let sales = [];
                 if (salesResponse.ok) {
                     const salesData = await safeJsonParse(salesResponse);
@@ -411,14 +417,11 @@
                 totalPrice = data.total || 0;
                 availableSales = data.sales || [];
 
-                // Find best applicable sale
                 bestSale = findBestApplicableSale();
                 console.log('Best sale found:', bestSale);
 
-                // Hide loading message
                 if (loadingElement) loadingElement.style.display = 'none';
 
-                // Display cart
                 displayCart(cartData, totalPrice);
                 displayAvailableSales();
             })
@@ -426,7 +429,6 @@
                 console.error('Error loading cart:', error);
                 if (loadingElement) loadingElement.style.display = 'none';
 
-                // Show specific error message
                 if (errorElement) {
                     errorElement.textContent = 'Failed to load cart: ' + error.message;
                     errorElement.style.display = 'block';
@@ -452,10 +454,8 @@
             .then(sales => {
                 availableSales = sales || [];
 
-                // Find best applicable sale
                 bestSale = findBestApplicableSale();
 
-                // Re-display cart with sale information
                 displayCart(cartData, totalPrice);
                 displayBestSale();
             })
@@ -475,8 +475,6 @@
         let maxSavings = 0;
 
         availableSales.forEach(sale => {
-            // Only consider sales that haven't been used yet
-            // (availableSales from /api/sales/active should only return unused sales)
             const savings = calculatePotentialSavings(sale);
             if (savings > maxSavings) {
                 maxSavings = savings;
@@ -492,7 +490,6 @@
 
         let savings = 0;
         cartData.forEach(book => {
-            // Check if book categoryId matches any sale category
             if (book.categoryId && sale.categoryIds.includes(book.categoryId)) {
                 savings += book.price * (sale.discountPercentage / 100);
             }
@@ -547,7 +544,6 @@
             return;
         }
 
-        // Calculate and show discounted total
         let displayTotal = total;
         if (bestSale) {
             const savings = calculatePotentialSavings(bestSale);
@@ -565,11 +561,9 @@
             potentialSavingsElement.style.display = 'none';
         }
 
-        // Show cart summary with final price
         totalPriceElement.textContent = `Total: $${displayTotal.toFixed(2)}`;
         cartSummary.style.display = 'block';
 
-        // Display books with sale indicators
         let html = '';
         books.forEach(book => {
             const isDiscounted = bestSale && bestSale.categoryIds &&
@@ -603,7 +597,6 @@
         const token = localStorage.getItem('authToken');
         const removeButton = document.getElementById(`remove-btn-${bookId}`);
 
-        // Disable button while processing
         removeButton.disabled = true;
         removeButton.textContent = 'Removing...';
 
@@ -626,14 +619,12 @@
                     throw new Error('Failed to remove book from cart');
                 }
 
-                // Refresh the entire page after successful removal
                 window.location.reload();
             })
             .catch(error => {
                 console.error('Error removing book from cart:', error);
                 alert('Failed to remove book from cart. Please try again.');
 
-                // Re-enable button on error
                 removeButton.disabled = false;
                 removeButton.textContent = 'Remove';
             });
@@ -647,7 +638,6 @@
 
         const token = localStorage.getItem('authToken');
 
-        // Show loading state
         const checkoutButton = document.getElementById('checkout-button');
         const originalText = checkoutButton.textContent;
         checkoutButton.disabled = true;
@@ -656,7 +646,6 @@
         console.log('Creating order with cart data:', cartData);
         console.log('Best sale to apply:', bestSale);
 
-        // Prepare request body with sale information if available
         let requestBody = {};
         if (bestSale && bestSale.id) {
             requestBody.saleId = bestSale.id;
@@ -666,7 +655,6 @@
         }
         requestBody = JSON.stringify(requestBody);
 
-        // Create the order using your existing backend endpoint
         fetch('/api/orders', {
             method: 'POST',
             headers: {
@@ -697,26 +685,20 @@
             .then(orderData => {
                 console.log('Order created successfully:', orderData);
 
-                // Order creation is complete, including sale application if applicable
-                // The backend handles sale application during order creation
                 return orderData;
             })
             .then(() => {
-                // Always redirect to /order as you wanted
                 window.location.href = '/order';
             })
             .catch(error => {
                 console.error('Error creating order:', error);
                 alert('Failed to create order: ' + error.message);
 
-                // Re-enable button on error
                 checkoutButton.disabled = false;
                 checkoutButton.textContent = originalText;
             });
     }
 
-    // Note: applySaleToOrder function is no longer needed since the backend
-    // handles sale application during order creation via the OrderRequestDTO
 
     function logout() {
         const token = localStorage.getItem('authToken');
@@ -736,6 +718,9 @@
             })
             .finally(() => {
                 localStorage.removeItem('authToken');
+                localStorage.removeItem('userRole');
+                localStorage.removeItem('username');
+
                 alert('You have been logged out successfully.');
                 window.location.href = '/login';
             });

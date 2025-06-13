@@ -1,6 +1,7 @@
 package com.awbd.bookstore.services;
 
 import com.awbd.bookstore.DTOs.BookDTO;
+import com.awbd.bookstore.mappers.BookMapper;
 import com.awbd.bookstore.models.Book;
 import com.awbd.bookstore.repositories.BookRepository;
 import jakarta.persistence.EntityNotFoundException;
@@ -12,9 +13,12 @@ import java.util.stream.Collectors;
 @Service
 public class BookService {
     private BookRepository bookRepository;
+    private BookMapper bookMapper;
 
-    public BookService(BookRepository bookRepository) {
+    public BookService(BookRepository bookRepository, BookMapper bookMapper) {
+
         this.bookRepository = bookRepository;
+        this.bookMapper = bookMapper;
     }
 
     public List<Book> getAllBooks() {
@@ -63,5 +67,19 @@ public class BookService {
     public Book getBookById(Long id) {
         return bookRepository.findById(id)
                 .orElseThrow(() -> new EntityNotFoundException("Book not found with id: " + id));
+    }
+
+    public Book updateBook(Long id, BookDTO bookDto) {
+        return bookRepository.findById(id)
+                .map(existingBook -> {
+                    existingBook.setTitle(bookDto.getTitle());
+                    existingBook.setPrice(bookDto.getPrice());
+                    existingBook.setStock(bookDto.getStock());
+
+                    bookMapper.updateEntityFromDto(bookDto, existingBook);
+
+                    return bookRepository.save(existingBook);
+                })
+                .orElseThrow(() -> new EntityNotFoundException("Book with ID " + id + " not found"));
     }
 }

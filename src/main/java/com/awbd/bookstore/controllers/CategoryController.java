@@ -3,10 +3,12 @@ package com.awbd.bookstore.controllers;
 import com.awbd.bookstore.DTOs.BookDTO;
 import com.awbd.bookstore.DTOs.CategoryDTO;
 import com.awbd.bookstore.annotations.RequireAdmin;
+import com.awbd.bookstore.exceptions.category.CategoryNotFoundException;
 import com.awbd.bookstore.mappers.BookMapper;
 import com.awbd.bookstore.mappers.CategoryMapper;
 import com.awbd.bookstore.models.Book;
 import com.awbd.bookstore.models.Category;
+import com.awbd.bookstore.repositories.CategoryRepository;
 import com.awbd.bookstore.services.CategoryService;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -52,7 +54,6 @@ public class CategoryController {
                 .body(savedCategory);
     }
 
-    // get all books from a category
     @GetMapping("/{id}/books")
     public List<BookDTO> getBooksInCategory(@PathVariable Long id) {
         List<Book> books = categoryService.getBooksInCategory(id);
@@ -77,7 +78,7 @@ public class CategoryController {
 
     @PutMapping("/{id}")
     @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<Category> updateCategory(
+    public ResponseEntity<CategoryDTO> updateCategory(
             @PathVariable
             Long id,
 
@@ -94,6 +95,18 @@ public class CategoryController {
         Category updatedCategory = categoryService.update(id, category);
         logger.info("Category with id {} updated", id);
 
-        return ResponseEntity.ok(updatedCategory);
+        CategoryDTO responseDto = categoryMapper.toDto(updatedCategory);
+        return ResponseEntity.ok(responseDto);
+    }
+
+    @GetMapping("/{id}")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<CategoryDTO> getCategoryById(@PathVariable Long id) {
+        try {
+            Category category = categoryService.getCategoryById(id);
+            return ResponseEntity.ok(categoryMapper.toDto(category));
+        } catch (CategoryNotFoundException e) {
+            return ResponseEntity.notFound().build();
+        }
     }
 }

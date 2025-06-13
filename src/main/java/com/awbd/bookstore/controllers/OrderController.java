@@ -53,13 +53,11 @@ public class OrderController {
 
         logger.info("=== ORDER CREATION STARTED ===");
 
-        // Validate auth header
         if (authHeader == null || !authHeader.startsWith("Bearer ")) {
             logger.error("Invalid authorization header");
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        // Extract username from token
         String token = authHeader.substring(7);
         String username = jwtUtil.getUsernameFromToken(token);
         if (username == null) {
@@ -68,17 +66,14 @@ public class OrderController {
         }
         logger.info("Username from token: {}", username);
 
-        // Find user
         User user = userService.findByUsername(username)
                 .orElseThrow(() -> new UserNotFoundException("User not found: " + username));
         logger.info("User found: {} (ID: {})", user.getUsername(), user.getId());
 
-        // Find cart
         Cart cart = cartService.getCartByUserId(user.getId())
                 .orElseThrow(() -> new RuntimeException("Cart not found for user: " + user.getId()));
         logger.info("Cart found: ID {}", cart.getId());
 
-        // Get books in cart
         List<Book> booksInCart = cartService.getBooksInCart(cart.getId());
         logger.info("Books in cart: {}", booksInCart.size());
 
@@ -87,13 +82,11 @@ public class OrderController {
             return ResponseEntity.badRequest().build();
         }
 
-        // Extract book IDs
         List<Long> bookIds = booksInCart.stream()
                 .map(Book::getId)
                 .collect(Collectors.toList());
         logger.info("Book IDs: {}", bookIds);
 
-        // Get sale ID
         Long saleId = null;
         if (request != null && request.getSaleId() != null) {
             saleId = request.getSaleId();
@@ -104,18 +97,15 @@ public class OrderController {
         logger.info("Sale ID: {}", saleId);
 
         try {
-            // Create order
             logger.info("About to call orderService.createOrder with userId: {}, bookIds: {}, saleId: {}",
                     user.getId(), bookIds, saleId);
             Order order = orderService.createOrder(user.getId(), bookIds, saleId);
             logger.info("Order created successfully: ID {}", order.getId());
 
-            // Clear cart
             logger.info("About to clear cart with ID: {}", cart.getId());
             cartService.clearCart(cart.getId());
             logger.info("Cart cleared for user: {}", username);
 
-            // Return order DTO
             logger.info("About to map order to DTO");
             OrderDTO orderDTO = orderMapper.toDto(order);
             logger.info("Order creation completed successfully");
@@ -128,8 +118,6 @@ public class OrderController {
             logger.error("Error cause: {}", e.getCause() != null ? e.getCause().toString() : "No cause");
             logger.error("Full stack trace:", e);
 
-            // Re-throw the exception to let global exception handler deal with it
-            // Or return a generic error response
             throw new RuntimeException("Order creation failed: " + e.getMessage(), e);
         }
     }
@@ -172,6 +160,23 @@ public class OrderController {
         OrderDTO updatedDTO = orderMapper.toDto(updatedOrder);
         logger.info("Order with ID {} updated successfully", id);
         return ResponseEntity.ok(updatedDTO);
+    }
+
+    @DeleteMapping("/{id}")
+    @RequireAdmin
+    public ResponseEntity<Void> deleteOrder(@PathVariable Long id) {
+        orderService.deleteOrder(id);
+        logger.info("Order with ID {} deleted", id);
+        return ResponseEntity.noContent().build();
+    }
+
+    @GetMapping("/{id}")
+    @RequireAdmin
+    public ResponseEntity<OrderDTO> getOrderById(@PathVariable Long id) {
+        Order order = orderService.getOrderById(id);
+        OrderDTO orderDTO = orderMapper.toDto(order);
+        logger.info("Retrieved order with ID: {}", id);
+        return ResponseEntity.ok(orderDTO);
     }
 
 }
